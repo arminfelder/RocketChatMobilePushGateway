@@ -70,6 +70,7 @@ RUN mkdir /pushGateway \
 
 RUN ln -s /certs /pushGateway/RocketChatMobilePushGateway/credentials
 
+EXPOSE 11000
+
 ENTRYPOINT ["/pushGateway/RocketChatMobilePushGateway/rocketChatMobilePushGateway"]
 
-EXPOSE 11000

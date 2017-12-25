@@ -18,17 +18,17 @@
  *                                                                                                                  *
  ********************************************************************************************************************/
 
-#include "TestHandler.h"
+#include "NorFoundHandler.h"
 
-TestHandler::TestHandler() {
-
-}
-
-void TestHandler::onRequest(std::unique_ptr<proxygen::HTTPMessage> headers) noexcept {
+NotFoundHandler::NotFoundHandler() {
 
 }
 
-void TestHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
+void NotFoundHandler::onRequest(std::unique_ptr<proxygen::HTTPMessage> headers) noexcept {
+
+}
+
+void NotFoundHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
     if(mBody){
         mBody->prependChain(std::move(body));
     } else{
@@ -36,19 +36,19 @@ void TestHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
     }
 }
 
-void TestHandler::onEOM() noexcept {
-    ResponseBuilder(downstream_).status(200, "OK")
-            .header("Set-Cookie", "test=123;Max-Age=60").body("Hello World").sendWithEOM();
+void NotFoundHandler::onEOM() noexcept {
+    ResponseBuilder(downstream_).status(404, "NOT FOUND")
+            .header("Set-Cookie", "test=123;Max-Age=60").body("not found").sendWithEOM();
 }
 
-void TestHandler::onUpgrade(proxygen::UpgradeProtocol proto) noexcept {
+void NotFoundHandler::onUpgrade(proxygen::UpgradeProtocol proto) noexcept {
 
 }
 
-void TestHandler::requestComplete() noexcept {
+void NotFoundHandler::requestComplete() noexcept {
     delete this;
 }
 
-void TestHandler::onError(proxygen::ProxygenError err) noexcept {
+void NotFoundHandler::onError(proxygen::ProxygenError err) noexcept {
 
 }

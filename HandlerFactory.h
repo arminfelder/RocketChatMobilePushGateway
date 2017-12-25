@@ -26,7 +26,7 @@
 #include <proxygen/httpserver/RequestHandler.h>
 #include <proxygen/httpserver/RequestHandlerFactory.h>
 
-#include "handlers/TestHandler.h"
+#include "handlers/NorFoundHandler.h"
 #include "utils.h"
 #include "handlers/ApplePushHandler.h"
 #include "handlers/GooglePushHandler.h"

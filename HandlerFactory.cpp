@@ -44,5 +44,5 @@ RequestHandler* HandlerFactory::onRequest(RequestHandler* requestHandler, HTTPMe
             }
         }
     }
-    return new TestHandler();
+    return new NotFoundHandler();
 }
