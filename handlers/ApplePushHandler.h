@@ -43,6 +43,8 @@ public:
 
     void onError(ProxygenError err) noexcept override;
 
+private:
+    std::unique_ptr<folly::IOBuf> mBody;
 };
 
 

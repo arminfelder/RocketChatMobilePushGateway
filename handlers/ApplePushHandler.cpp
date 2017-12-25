@@ -19,13 +19,18 @@
  ********************************************************************************************************************/
 
 #include "ApplePushHandler.h"
+#include "../models/ApplePushModel.h"
 
 void ApplePushHandler::onRequest(std::unique_ptr<HTTPMessage> headers) noexcept {
 
 }
 
 void ApplePushHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
-
+    if(mBody){
+        (*mBody).appendChain(std::move(body));
+    } else{
+        mBody = std::move(body);
+    }
 }
 
 void ApplePushHandler::onUpgrade(proxygen::UpgradeProtocol prot) noexcept {
@@ -33,7 +38,26 @@ void ApplePushHandler::onUpgrade(proxygen::UpgradeProtocol prot) noexcept {
 }
 
 void ApplePushHandler::onEOM() noexcept {
+    if (mBody) {
+        try {
+            std::string body(reinterpret_cast<const char *>((*mBody).data()));
+            ApplePushModel applePushModel(body);
+            std::string response;
+            if (applePushModel.sendMessage()) {
+                ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
 
+            } else {
+                ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push mesage").sendWithEOM();
+
+            }
+
+        } catch (Exception &e) {
+            std::cout << "exception " << e.what() << std::endl;
+            ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push mesage").sendWithEOM();
+        }
+    } else {
+        ResponseBuilder(downstream_).status(400, "BAD REQUEST").body("failed to send push message").sendWithEOM();
+    }
 }
 
 void ApplePushHandler::requestComplete() noexcept {

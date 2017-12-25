@@ -18,4 +18,61 @@
  *                                                                                                                  *
  ********************************************************************************************************************/
 
+#include <jsoncpp/json/json.h>
+#include <iostream>
+#include <curl/curl.h>
+#include <fstream>
+#include <openssl/ssl.h>
 #include "ApplePushModel.h"
+
+
+ApplePushModel::ApplePushModel(const std::string &pJson):mPusher("credentials/apple/cred.pem") {
+    Json::Reader reader;
+    Json::Value obj;
+    reader.parse(pJson, obj);
+    std::cout<<obj["token"].asString()<<std::endl;
+    if(obj.isMember("token") && obj.isMember("options")){
+        std::string token = obj["token"].asString();
+        Json::Value options = obj["options"];
+        if(options.isMember("from")&&options.isMember("badge")&&options.isMember("title")&&options.isMember("text")){
+            std::cout<<"valid json"<<std::endl;
+            mTitle = std::move(options["title"].asString());
+            mText = std::move(options["text"].asString());
+            mFrom = std::move(options["from"].asString());
+            mDeviceToken = std::move(obj["token"].asString());
+            mBadge = options["badge"].asInt();
+        }
+    }
+}
+
+bool ApplePushModel::sendMessage() {
+
+    Json::FastWriter fast;
+
+    std::vector<std::string> tokens;
+    tokens.push_back(mDeviceToken);
+
+    PusherContent content;
+
+    Json::Value obj;
+    Json::Value msg;
+    msg["title"] = mTitle;
+    msg["body"] = mText;
+
+    std::string data = fast.write(msg);
+
+
+    content.badge = mBadge;
+    content.content = mTitle;
+    content.userData = "\"ejson\":"+data;
+
+
+    mPusher.isSandBox = true;
+    mPusher.pushNotification(content, tokens);
+
+    //TODO: shoud be fixed
+
+    std::string url{"https://gateway.sandbox.push.apple.com:2195"};
+
+    return false;
+}

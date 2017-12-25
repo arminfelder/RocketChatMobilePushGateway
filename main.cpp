@@ -51,6 +51,8 @@ int main(int argc, char* argv[]) {
 
     GooglePushModel::loadApiKey();
 
+
+
     std::vector<HTTPServer::IPConfig> IPs = {
             {
                     SocketAddress(FLAGS_ip, FLAGS_http_port, true), Protocol::HTTP

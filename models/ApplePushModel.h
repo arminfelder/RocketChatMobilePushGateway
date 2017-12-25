@@ -21,9 +21,25 @@
 #ifndef ROCKETCHATMOBILEPUSHGATEWAY_APPLEPUSHMODEL_H
 #define ROCKETCHATMOBILEPUSHGATEWAY_APPLEPUSHMODEL_H
 
+#include <curl/curl.h>
+#include "PusherCpp/Pusher.h"
+
 
 class ApplePushModel {
 
+public:
+    ApplePushModel(const std::string &pJson);
+
+    bool sendMessage();
+
+private:
+    Pusher mPusher;
+
+    std::string mTitle;
+    std::string mText;
+    std::string mDeviceToken;
+    std::string mFrom;
+    int mBadge{0};
 };
 
 
