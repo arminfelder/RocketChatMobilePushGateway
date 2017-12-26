@@ -60,7 +60,9 @@ RUN cd /proxygenSrc/proxygen/folly/folly \
 RUN cd /proxygenSrc/proxygen/proxygen \
     && ./deps.sh \
     && ./reinstall.sh
- 
+
+ADD https://git.fairkom.net/api/v4/projects/chat%2FRocketChatMobilePushGateway/repository/commits version.json
+
 RUN mkdir /pushGateway \
     && cd /pushGateway \
     && git clone --recursive https://git.fairkom.net/chat/RocketChatMobilePushGateway.git \
