@@ -44,7 +44,16 @@ private:
     std::string mText;
     std::string mDeviceToken;
     std::string mFrom;
+    std::string mPayload;
+    std::string mSound;
+    std::string mApn;
+    std::string mGcm;
+    std::string mQuery;
+    bool mSent{false};
+    int mSendind{0};
+    std::string mTopic;
     int mBadge{0};
+
 
 };
 

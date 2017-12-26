@@ -17,22 +17,28 @@
  * along with RocketChatMobilePushGateway. If not, see <http://www.gnu.org/licenses/>.                              *
  *                                                                                                                  *
  ********************************************************************************************************************/
+
 #include "utils.h"
+
 
 namespace utils{
     std::vector<std::string> getSegments(const std::string &pPath){
-        size_t current = 0;
-        size_t next = -1;
+        unsigned long current = 0;
+        long next = -1;
         std::vector<std::string> segments;
         do{
-            current = next +1;
-            next = pPath.find_first_of("/",current);
+            current = static_cast<size_t >(next + 1);
+            next = pPath.find_first_of('/',current);
+
             std::string segment = pPath.substr(current, next-current);
-            if(segment != "") {
-                segments.push_back(segment);
-                std::cout << segment << std::endl;
+            if(!segment.empty()) {
+                segments.push_back(std::move(segment));
             }
         }while(next != std::string::npos);
+
+
+
+
         return segments;
     }
 }

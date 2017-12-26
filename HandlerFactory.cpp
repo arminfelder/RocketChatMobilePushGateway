@@ -31,8 +31,6 @@ void HandlerFactory::onServerStop() noexcept{
 
 RequestHandler* HandlerFactory::onRequest(RequestHandler* requestHandler, HTTPMessage* httpMessage) noexcept{
     if(httpMessage) {
-        std::cout << "path " << httpMessage->getPath()<<std::endl;
-        std::cout<< "url "<<httpMessage->getURL()<<std::endl;
         std::vector<std::string> segments = utils::getSegments(httpMessage->getURL());
         if(segments.size()>2){
             if(segments[0] == "push"&&segments[2] == "send"){

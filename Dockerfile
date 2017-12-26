@@ -63,7 +63,7 @@ RUN cd /proxygenSrc/proxygen/proxygen \
  
 RUN mkdir /pushGateway \
     && cd /pushGateway \
-    && git clone https://git.fairkom.net/chat/RocketChatMobilePushGateway.git \
+    && git clone --recursive https://git.fairkom.net/chat/RocketChatMobilePushGateway.git \
     && cd RocketChatMobilePushGateway \
     && cmake . \
     && make

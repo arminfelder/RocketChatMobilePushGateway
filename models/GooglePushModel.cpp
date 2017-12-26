@@ -45,18 +45,55 @@ void GooglePushModel::loadApiKey() {
 GooglePushModel::GooglePushModel(const std::string &pJson) {
     Json::Reader reader;
     Json::Value obj;
-    reader.parse(pJson, obj);
-    std::cout<<obj["token"].asString()<<std::endl;
-    if(obj.isMember("token") && obj.isMember("options")){
-        std::string token = obj["token"].asString();
-        Json::Value options = obj["options"];
-        if(options.isMember("from")&&options.isMember("badge")&&options.isMember("title")&&options.isMember("text")&&options.isMember("badge")){
-            std::cout<<"valid json"<<std::endl;
-            mTitle = std::move(options["title"].asString());
-            mText = std::move(options["text"].asString());
-            mFrom = std::move(options["from"].asString());
+    Json::FastWriter fast;
+
+    if(pJson.length()) {
+        reader.parse(pJson, obj);
+
+        if (obj.isMember("token") && obj.isMember("options")) {
+
+            Json::Value options = obj["options"];
+
+            Json::Value apn = options["gcm"];
+            std::string test(fast.write(options));
+            if (apn.isMember("text")) {
+                std::string temp = std::move(apn["text"].asString());
+                unsigned long index = 0;
+                while(true){
+                    index = temp.find('\n',index);
+                    if(index == std::string::npos){
+                        break;
+                    }
+                    temp.replace(index, 1, "\\r\\n");
+                    index += 4;
+                }
+                mApn = std::move(temp);
+
+
+            }
+            if (options.isMember("title")) {
+                mTitle = std::move(options["title"].asString());
+            }
+            if (options.isMember("text")) {
+                mText = std::move(options["text"].asString());
+            }
+            if (options.isMember("from")) {
+                mFrom = std::move(options["from"].asString());
+            }
+            if (options.isMember("badge")) {
+                mBadge = options["badge"].asInt();
+            }
+            if (options.isMember("payload")) {
+                mPayload = std::move(fast.write(options["payload"]));
+            }
+            if (options.isMember("topic")) {
+                mTopic = std::move(options["topic"].asString());
+            }
+            if (options.isMember("sound")) {
+                mSound = std::move(options["sound"].asString());
+            }
             mDeviceToken = std::move(obj["token"].asString());
-            mBadge = options["badge"].asInt();
+
         }
     }
 }
@@ -68,6 +105,9 @@ bool GooglePushModel::sendMessage() {
     Json::Value msg;
     msg["title"] = mTitle;
     msg["body"] = mText;
+    msg["message"] = mGcm;
+    msg["ejson"] = mPayload;
+    msg["msgcnt"] = mBadge;
 
     obj["to"] = mDeviceToken;
     obj["notification"] = msg;
@@ -84,7 +124,6 @@ bool GooglePushModel::sendMessage() {
 
         struct curl_slist *chunk = nullptr;
 
-        std::cout<<std::string("Authorization: key="+mApiKey)<<std::endl;
         chunk = curl_slist_append(chunk, std::string("Authorization: key="+mApiKey).c_str());
         chunk = curl_slist_append(chunk, "Content-Type: application/json");
 
@@ -98,12 +137,17 @@ bool GooglePushModel::sendMessage() {
 
 
         res = curl_easy_perform(curl);
+
         if(res != CURLE_OK){
             std::cerr<<"curl error: "<<curl_easy_strerror(res)<<std::endl;
         }else{
+            curl_easy_cleanup(curl);
+            curl_slist_free_all(chunk);
             return true;
         }
-    }
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(chunk);
 
+    }
     return false;
 }
