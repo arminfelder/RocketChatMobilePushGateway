@@ -8,12 +8,12 @@
 - make
 - place the credentials in the servers "credentials" directory:
     - FCM -> google/serverKey.txt
-    - APNS -> apple/cred.pem
+    - APNS -> apple/cred.pem (see https://github.com/joshuakuai/PusherCpp)
     
 ### Docker
 - pass port 11000
 - mount your credentials folder into the container with -v /certs:/yourCertsFolder
     - yourCertsFolder/google/serverKey.txt
-    - yourCertsFolder/apple/cred.pem
+    - yourCertsFolder/apple/cred.pem (see https://github.com/joshuakuai/PusherCpp)
 
 e.g. docker run -t gateway -v /certs:/yourCertsFolder -p 0.0.0.0:80:11000
