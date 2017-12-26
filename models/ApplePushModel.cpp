@@ -25,7 +25,7 @@
 #include "ApplePushModel.h"
 
 
-ApplePushModel::ApplePushModel(const std::string &pJson):mPusher("./credentials/apple/cred.pem") {
+ApplePushModel::ApplePushModel(const std::string &pJson):mPusher(std::string(getcwd(NULL,0))+"/credentials/apple/cred.pem") {
 
 
     Json::Reader reader;
