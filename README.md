@@ -16,4 +16,4 @@
     - yourCertsFolder/google/serverKey.txt
     - yourCertsFolder/apple/cred.pem (see https://github.com/joshuakuai/PusherCpp)
 
-e.g. docker run -t gateway -v /certs:/yourCertsFolder -p 0.0.0.0:80:11000
+e.g. docker run -t gateway -v /yourCertsFolder:/certs -p 0.0.0.0:80:11000
