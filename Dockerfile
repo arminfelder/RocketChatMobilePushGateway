@@ -4,7 +4,9 @@ ADD . /pushGateway/RocketChatMobilePushGateway
 
 RUN cd /pushGateway/RocketChatMobilePushGateway \
    &&cmake . \
-   && make
+   && make \
+   && rm CMake* -rf \
+   && rm cmake* -rf
 
 RUN ln -s /certs /pushGateway/RocketChatMobilePushGateway/credentials
 

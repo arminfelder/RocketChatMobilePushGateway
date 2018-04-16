@@ -21,6 +21,7 @@
 #include <fstream>
 #include <iostream>
 #include <fstream>
+#include <cstdlib>
 
 #include <folly/FileUtil.h>
 #include <folly/String.h>
@@ -30,7 +31,6 @@
 #include <proxygen/lib/http/HTTPMessage.h>
 #include <proxygen/lib/http/session/HTTPUpstreamSession.h>
 #include <proxygen/lib/http/codec/HTTP2Codec.h>
-#include <curl/curl.h>
 #include "GooglePushModel.h"
 
 std::string GooglePushModel::mApiKey;
@@ -39,7 +39,12 @@ void GooglePushModel::loadApiKey() {
     std::ifstream ifs("/certs/google/serverKey.txt");
     std::string content((std::istreambuf_iterator<char>(ifs)),
                         (std::istreambuf_iterator<char>()));
-    GooglePushModel::mApiKey = content;
+    if(content.length()){
+        GooglePushModel::mApiKey = content;
+    }else{
+        std::cout<<"Error loading Google Push Key: file: /certs/google/serverKey.txt is empty or does not exist";
+        exit(EXIT_FAILURE);
+    }
 }
 
 GooglePushModel::GooglePushModel(const std::string &pJson) {
@@ -98,6 +103,45 @@ GooglePushModel::GooglePushModel(const std::string &pJson) {
     }
 }
 
+int GooglePushModel::trace(CURL *handle, curl_infotype type,
+                                  char *data, size_t size,
+                                  void *userp){
+
+    const char *text;
+    (void)handle; /* prevent compiler warning */
+    (void)userp;
+
+    switch (type) {
+        case CURLINFO_TEXT:
+        std::cerr<<"== Info:"<< data<<std::endl;
+        default: /* in case a new one is introduced to shock us */
+            return 0;
+
+        case CURLINFO_HEADER_OUT:
+            text = "=> Send header";
+            break;
+        case CURLINFO_DATA_OUT:
+            text = "=> Send data";
+            break;
+        case CURLINFO_SSL_DATA_OUT:
+            text = "=> Send SSL data";
+            break;
+        case CURLINFO_HEADER_IN:
+            text = "<= Recv header";
+            break;
+        case CURLINFO_DATA_IN:
+            text = "<= Recv data";
+            break;
+        case CURLINFO_SSL_DATA_IN:
+            text = "<= Recv SSL data";
+            break;
+    }
+
+    std::cerr<<text<<": "<<data<<std::endl;
+
+    return 0;
+}
+
 bool GooglePushModel::sendMessage() {
 
 
@@ -127,6 +171,8 @@ bool GooglePushModel::sendMessage() {
         chunk = curl_slist_append(chunk, std::string("Authorization: key="+mApiKey).c_str());
         chunk = curl_slist_append(chunk, "Content-Type: application/json");
 
+        curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, trace );
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
         curl_easy_setopt(curl, CURLOPT_URL,mApiUrl.c_str());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,data.size());
@@ -134,6 +180,7 @@ bool GooglePushModel::sendMessage() {
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
         curl_easy_setopt(curl, CURLOPT_USE_SSL, true);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
+        curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, true);
 
 
         res = curl_easy_perform(curl);

@@ -23,6 +23,8 @@
 
 #include <string>
 #include <jsoncpp/json/json.h>
+#include <curl/curl.h>
+
 
 
 class GooglePushModel {
@@ -34,6 +36,9 @@ public:
     bool sendMessage();
 
     static void loadApiKey();
+    static int trace(CURL *handle, curl_infotype type,
+                        char *data, size_t size,
+                        void *userp);
 
 private:
     static std::string mApiKey;
