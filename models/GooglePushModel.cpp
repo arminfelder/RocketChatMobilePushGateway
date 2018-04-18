@@ -22,6 +22,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+#include <regex>
 
 #include <folly/FileUtil.h>
 #include <folly/String.h>
@@ -40,7 +41,8 @@ void GooglePushModel::loadApiKey() {
     std::string content((std::istreambuf_iterator<char>(ifs)),
                         (std::istreambuf_iterator<char>()));
     if(content.length()){
-        GooglePushModel::mApiKey = content;
+        std::regex newLine("([\\n]+)");
+        GooglePushModel::mApiKey = std::regex_replace(content,newLine,"");
     }else{
         std::cout<<"Error loading Google Push Key: file: /certs/google/serverKey.txt is empty or does not exist";
         exit(EXIT_FAILURE);
@@ -181,6 +183,7 @@ bool GooglePushModel::sendMessage() {
         curl_easy_setopt(curl, CURLOPT_USE_SSL, true);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
         curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, true);
+
 
 
         res = curl_easy_perform(curl);
