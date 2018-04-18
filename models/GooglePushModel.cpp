@@ -174,7 +174,7 @@ bool GooglePushModel::sendMessage() {
         chunk = curl_slist_append(chunk, "Content-Type: application/json");
 
         curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, trace );
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
         curl_easy_setopt(curl, CURLOPT_URL,mApiUrl.c_str());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,data.size());
