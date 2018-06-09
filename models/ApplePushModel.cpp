@@ -41,8 +41,8 @@ ApplePushModel::ApplePushModel(const std::string &pJson):mPusher("/certs/apple/c
 
             Json::Value apn = options["apn"];
             std::string test(fast.write(options));
-            if (apn.isMember("text")) {
-               std::string temp = std::move(apn["text"].asString());
+            if (options.isMember("text")) {
+               std::string temp = std::move(options["text"].asString());
                 unsigned long index = 0;
                 while(true){
                     index = temp.find('\n',index);
@@ -52,16 +52,16 @@ ApplePushModel::ApplePushModel(const std::string &pJson):mPusher("/certs/apple/c
                     temp.replace(index, 1, "\\r\\n");
                     index += 4;
                 }
-                mApn = std::move(temp);
+                mText = std::move(temp);
 
 
             }
             if (options.isMember("title")) {
                 mTitle = std::move(options["title"].asString());
             }
-            if (options.isMember("text")) {
+            /*if (options.isMember("text")) {
                 mText = std::move(options["text"].asString());
-            }
+            }*/
             if (options.isMember("from")) {
                 mFrom = std::move(options["from"].asString());
             }
@@ -101,7 +101,7 @@ bool ApplePushModel::sendMessage() {
     }
 
     content.badge = mBadge;
-    content.content = mApn;
+    content.content = mText;
     content.sound = mSound;
 
 
