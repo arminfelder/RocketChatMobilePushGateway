@@ -1,5 +1,7 @@
 FROM afelder/proxygen:2018.1
 
+LABEL maintainer="armin.felder@osalliance.com"
+
 ADD . /pushGateway/RocketChatMobilePushGateway 
 
 RUN cd /pushGateway/RocketChatMobilePushGateway \
