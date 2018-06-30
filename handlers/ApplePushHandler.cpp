@@ -18,11 +18,15 @@
  *                                                                                                                  *
  ********************************************************************************************************************/
 
+#define UNUSED(x) (void)x;
+
 #include "ApplePushHandler.h"
 #include "../models/ApplePushModel.h"
 
-void ApplePushHandler::onRequest(std::unique_ptr<HTTPMessage> headers) noexcept {
 
+
+void ApplePushHandler::onRequest(std::unique_ptr<HTTPMessage> headers) noexcept {
+    UNUSED(headers);
 }
 
 void ApplePushHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
@@ -34,7 +38,7 @@ void ApplePushHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
 }
 
 void ApplePushHandler::onUpgrade(proxygen::UpgradeProtocol prot) noexcept {
-
+    UNUSED(prot);
 }
 
 void ApplePushHandler::onEOM() noexcept {
@@ -65,5 +69,5 @@ void ApplePushHandler::requestComplete() noexcept {
 }
 
 void ApplePushHandler::onError(ProxygenError err) noexcept {
-
+    UNUSED(err);
 }

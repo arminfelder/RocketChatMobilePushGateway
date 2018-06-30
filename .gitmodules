@@ -1,3 +1,6 @@
-[submodule "models/PusherCpp"]
-	path = models/PusherCpp
-	url = https://github.com/joshuakuai/PusherCpp.git
+[submodule "libs/cpp-jwt"]
+	path = libs/cpp-jwt
+	url = https://github.com/arun11299/cpp-jwt.git
+[submodule "libs/cpp-base64"]
+	path = libs/cpp-base64
+	url = https://github.com/ReneNyffenegger/cpp-base64.git

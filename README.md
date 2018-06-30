@@ -19,8 +19,21 @@ which then has to be used by the other servers. In that case you should use this
 - make
 - place the credentials in the servers "credentials" directory:
     - FCM -> google/serverKey.txt
-    - APNS -> apple/cred.pem (see https://github.com/joshuakuai/PusherCpp)
-    
+    - APNS ->
+        1. create key (see https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_token_based_connection_to_apns)
+        2. convert the *.p8 to pem
+            - wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar
+            - chmod +x jose.phar
+            - ./jose.phar key:convert:pkcs1 $(./jose.phar key:load:key ./AuthKey_*.p8) > key.pem
+        3. save the pem file apple/key.pem
+        4. create apple/setting.json file, that looks like:
+            
+            ``{
+                  "teamId":"YOUR_APPLE_DEVELOPER_TEAM_ID",
+                  "key": "THE_KEY_RELATED_TO_THE_p8(also part of the name AuthKey_[KEY].p8)",
+                  "appId": "YOUR_APP_ID"   
+              }``
+
 ### Docker
 - pass port 11000
 - mount your credentials folder into the container with -v /certs:/yourCertsFolder

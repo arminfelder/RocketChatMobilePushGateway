@@ -18,6 +18,8 @@
  *                                                                                                                  *
  ********************************************************************************************************************/
 
+#define UNUSED(x) (void)x;
+
 #include <fstream>
 #include <iostream>
 #include <fstream>
@@ -108,6 +110,8 @@ GooglePushModel::GooglePushModel(const std::string &pJson) {
 int GooglePushModel::trace(CURL *handle, curl_infotype type,
                                   char *data, size_t size,
                                   void *userp){
+
+    UNUSED(size);
 
     const char *text;
     (void)handle; /* prevent compiler warning */

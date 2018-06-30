@@ -11,8 +11,12 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -flto")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 include_directories(/usr/local/include/r3/)
+include_directories(libs/cpp-jwt/include)
+include_directories(libs/cpp-base64)
+
+
 set(SOURCE_FILES main.cpp HandlerFactory.cpp handlers/NorFoundHandler.cpp utils.cpp utils.h handlers/ApplePushHandler.cpp handlers/ApplePushHandler.h handlers/GooglePushHandler.cpp handlers/GooglePushHandler.h models/GooglePushModel.cpp models/GooglePushModel.h models/ApplePushModel.cpp models/ApplePushModel.h
-         models/PusherCpp/Pusher.cpp models/PusherCpp/Pusher.h)
-add_executable(rocketChatMobilePushGateway ${SOURCE_FILES} utils.cpp utils.h models/GooglePushModel.cpp models/GooglePushModel.h)
+         libs/cpp-jwt/include/jwt/jwt.hpp libs/cpp-base64/base64.h libs/cpp-base64/base64.cpp)
+add_executable(rocketChatMobilePushGateway ${SOURCE_FILES})
 
 target_link_libraries(rocketChatMobilePushGateway -lwangle -lfolly -lz -lssl -lcrypto -levent -lgflags -lglog  -L/usr/lib64 -lpthread -pthread -lfolly -lglog -ldouble-conversion -lboost_system -lboost_thread -lproxygenhttpserver -ljsoncpp -lcurl)
