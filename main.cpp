@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include "HandlerFactory.h"
 #include "models/GooglePushModel.h"
+#include "models/ApplePushModel.h"
 
 using namespace proxygen;
 
@@ -51,6 +52,7 @@ int main(int argc, char* argv[]) {
     google::InstallFailureSignalHandler();
 
     GooglePushModel::loadApiKey();
+    ApplePushModel::loadApiKey();
 
 
 

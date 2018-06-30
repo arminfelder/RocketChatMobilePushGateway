@@ -22,7 +22,6 @@
 #define ROCKETCHATMOBILEPUSHGATEWAY_APPLEPUSHMODEL_H
 
 #include <curl/curl.h>
-#include "PusherCpp/Pusher.h"
 
 
 class ApplePushModel {
@@ -32,9 +31,17 @@ public:
 
     bool sendMessage();
 
-private:
-    Pusher mPusher;
+    static void loadApiKey();
 
+private:
+   // Pusher mPusher;
+
+    const std::string mApiUrl{"https://api.push.apple.com/3/device/"};
+
+    static std::string mPem;
+    static std::string mTeamId;
+    static std::string mAppId;
+    static std::string mKey;
     std::string mTitle;
     std::string mText;
     std::string mDeviceToken;
