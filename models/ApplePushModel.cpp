@@ -110,12 +110,25 @@ ApplePushModel::ApplePushModel(const std::string &pJson) {
 
 bool ApplePushModel::sendMessage() {
 
-    std::vector<std::string> tokens;
-
+    Json::Value obj;
     Json::FastWriter fast;
 
-    //tokens.push_back(mDeviceToken);
+    Json::Value alert;
 
+    alert["body"] = mText;
+    alert["title"] = mTitle;
+
+    Json::Value aps;
+    aps["category"] = "MESSAGE";
+    aps["badge"] = mBadge;
+    aps["sound"] = mSound;
+    aps["alert"] = alert;
+
+    obj["aps"] = aps;
+    obj["ejson"] = mPayload;
+
+    std::string json = fast.write(obj);
+    std::cout<<json<<std::endl;
 
     CURL *curl;
     CURLcode res;
@@ -153,11 +166,13 @@ bool ApplePushModel::sendMessage() {
 
              std::string url = mApiUrl+mDeviceToken;
 
+             std::cout<<url<<std::endl;
+
            //  curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, trace );
              curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
              curl_easy_setopt(curl, CURLOPT_URL,url.c_str());
-             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, mPayload.c_str());
-             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,mPayload.size());
+             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json.c_str());
+             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,json.size());
              curl_easy_setopt(curl, CURLOPT_POST, true);
              curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
              curl_easy_setopt(curl, CURLOPT_USE_SSL, true);

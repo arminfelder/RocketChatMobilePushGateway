@@ -162,6 +162,7 @@ bool GooglePushModel::sendMessage() {
     obj["to"] = mDeviceToken;
     obj["data"] = msg;
     obj["priority"] = 10;
+    obj["collapseKey"] = mFrom;
 
     Json::FastWriter fast;
 
