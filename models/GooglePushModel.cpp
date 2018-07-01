@@ -39,7 +39,8 @@
 std::string GooglePushModel::mApiKey;
 
 void GooglePushModel::loadApiKey() {
-    std::ifstream ifs("/certs/google/serverKey.txt");
+    //std::ifstream ifs("/certs/google/serverKey.txt");
+    std::ifstream ifs("/home/armin/certs/google/serverKey.txt");
     std::string content((std::istreambuf_iterator<char>(ifs)),
                         (std::istreambuf_iterator<char>()));
     if(content.length()){
@@ -155,12 +156,13 @@ bool GooglePushModel::sendMessage() {
     Json::Value msg;
     msg["title"] = mTitle;
     msg["body"] = mText;
-    msg["message"] = mGcm;
+    msg["message"] = mText;
     msg["ejson"] = mPayload;
     msg["msgcnt"] = mBadge;
 
     obj["to"] = mDeviceToken;
-    obj["notification"] = msg;
+    obj["data"] = msg;
+    obj["priority"] = 10;
 
     Json::FastWriter fast;
 

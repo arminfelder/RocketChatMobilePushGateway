@@ -191,8 +191,8 @@ bool ApplePushModel::sendMessage() {
 }
 
 void ApplePushModel::loadApiKey() {
-    std::ifstream ifsPem("/certs/apple/key.pem");
-    std::ifstream ifsSettings("/certs/apple/settings.json");
+    std::ifstream ifsPem("/home/armin/certs/apple/key.pem");
+    std::ifstream ifsSettings("/home/armin/certs/apple/settings.json");
     std::string pemContent((std::istreambuf_iterator<char>(ifsPem)),(std::istreambuf_iterator<char>()));
     std::string settingsContent((std::istreambuf_iterator<char>(ifsSettings)),(std::istreambuf_iterator<char>()));
     if(pemContent.length()&&settingsContent.length()){
