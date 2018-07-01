@@ -155,12 +155,13 @@ bool GooglePushModel::sendMessage() {
     Json::Value msg;
     msg["title"] = mTitle;
     msg["body"] = mText;
-    msg["message"] = mGcm;
+    msg["message"] = mText;
     msg["ejson"] = mPayload;
     msg["msgcnt"] = mBadge;
 
     obj["to"] = mDeviceToken;
-    obj["notification"] = msg;
+    obj["data"] = msg;
+    obj["priority"] = 10;
 
     Json::FastWriter fast;
 
