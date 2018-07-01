@@ -39,8 +39,7 @@
 std::string GooglePushModel::mApiKey;
 
 void GooglePushModel::loadApiKey() {
-    //std::ifstream ifs("/certs/google/serverKey.txt");
-    std::ifstream ifs("/home/armin/certs/google/serverKey.txt");
+    std::ifstream ifs("/certs/google/serverKey.txt");
     std::string content((std::istreambuf_iterator<char>(ifs)),
                         (std::istreambuf_iterator<char>()));
     if(content.length()){
