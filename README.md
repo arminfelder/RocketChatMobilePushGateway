@@ -11,6 +11,10 @@ If you develop your own app or just build it yourself, you have to set your cred
 If you develop your own app, and want other servers to be able to use it, with push, then you need to setup your own gateway, 
 which then has to be used by the other servers. In that case you should use this gateway server. 
 
+### dependencies
+
+This project has dependencies, included via submodules, so you have to clone recursively.
+
 ### manual build instructions
 
 - build and install proxygen libs: https://github.com/facebook/proxygen
