@@ -1,11 +1,12 @@
-FROM afelder/proxygen:2018.1
+FROM afelder/proxygen:latest
 
 LABEL maintainer="armin.felder@osalliance.com"
 
+RUN apt-get update && apt-get --yes install libjsoncpp-dev libcurl4-openssl-dev cmake
 ADD . /pushGateway/RocketChatMobilePushGateway 
 
 RUN cd /pushGateway/RocketChatMobilePushGateway \
-   &&cmake . \
+   && cmake . \
    && make \
    && rm CMake* -rf \
    && rm cmake* -rf

@@ -36,13 +36,14 @@ This project has dependencies, included via submodules, so you have to clone rec
             ``{
                   "teamId":"YOUR_APPLE_DEVELOPER_TEAM_ID",
                   "key": "THE_KEY_RELATED_TO_THE_p8(also part of the name AuthKey_[KEY].p8)",
-                  "appId": "YOUR_APP_ID"   
+                  "appId": "YOUR_APP_ID (Bundle Id)"   
               }``
 
-### Docker
-- pass port 11000
-- mount your credentials folder into the container with -v /certs:/yourCertsFolder
+### Docker build
+- run `docker build .`
+- place the credentials in the servers "credentials" directory (see "manual build instructions" for details)
+- mount your credentials folder into the container with -v /yourCertsFolder:/certs and run image
     - yourCertsFolder/google/serverKey.txt
     - yourCertsFolder/apple/cred.pem (see https://github.com/joshuakuai/PusherCpp)
 
-e.g. docker run -t gateway -v /yourCertsFolder:/certs -p 0.0.0.0:80:11000
+  e.g. `docker run -t gateway -v /yourCertsFolder:/certs -p 0.0.0.0:80:11000 <image id>`
