@@ -142,7 +142,7 @@ bool ApplePushModel::sendMessage() {
             jwt::jwt_object obj{jwt::params::algorithm("ES256"),
                     jwt::params::headers({
                                                  {"alg", "ES256"},
-                                                 {"kid", "3VYNV8J29D"}
+                                                 {"kid", mKey}
                                          }),
                     jwt::params::secret(mPem)
             };
