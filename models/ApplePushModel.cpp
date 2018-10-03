@@ -25,14 +25,17 @@
 #include <algorithm>
 #include <cassert>
 #include <chrono>
+
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/string_generator.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/uuid/uuid_io.hpp>
+
 #include <proxygen/lib/utils/CryptUtil.h>
 
 #include "ApplePushModel.h"
+#include "../date.h"
 
 #include "../libs/cpp-jwt/include/jwt/jwt.hpp"
 #include "../libs/cpp-jwt/include/jwt/algorithm.hpp"
@@ -128,7 +131,14 @@ bool ApplePushModel::sendMessage() {
     obj["ejson"] = mPayload;
 
     std::string json = fast.write(obj);
-    std::cout<<json<<std::endl;
+
+    using namespace date;
+    using namespace std::chrono;
+    
+    boost::uuids::uuid uuidObj = boost::uuids::random_generator()();
+    std::string uuidString = boost::lexical_cast<std::string>(uuidObj);
+
+    std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tApple push data\t" << json << std::endl;
 
     CURL *curl;
     CURLcode res;
@@ -147,55 +157,54 @@ bool ApplePushModel::sendMessage() {
                     jwt::params::secret(mPem)
             };
 
-            auto n = std::chrono::system_clock::now();
-            auto in_time_t = std::chrono::system_clock::to_time_t(n);
+            auto n = system_clock::now();
+            auto in_time_t = system_clock::to_time_t(n);
 
             obj.add_claim("iss", mTeamId).add_claim("iat", in_time_t);
 
             std::string encoded_jwt = obj.signature();
 
-            boost::uuids::uuid uuidObj = boost::uuids::random_generator()();
-            std::string uuidString = boost::lexical_cast<std::string>(uuidObj);
-
-             chunk = curl_slist_append(chunk, std::string("Authorization: Bearer "+obj.signature()).c_str());
-             chunk = curl_slist_append(chunk, std::string("apns-id: "+uuidString).c_str());
-             chunk = curl_slist_append(chunk, std::string("apns-expiration: 0").c_str());
-             chunk = curl_slist_append(chunk, std::string("apns-priority: 10").c_str());
-             chunk = curl_slist_append(chunk, std::string("apns-topic: "+mAppId).c_str());
+            chunk = curl_slist_append(chunk, std::string("Authorization: Bearer "+obj.signature()).c_str());
+            chunk = curl_slist_append(chunk, std::string("apns-id: "+uuidString).c_str());
+            chunk = curl_slist_append(chunk, std::string("apns-expiration: 0").c_str());
+            chunk = curl_slist_append(chunk, std::string("apns-priority: 10").c_str());
+            chunk = curl_slist_append(chunk, std::string("apns-topic: "+mAppId).c_str());
 
 
-             std::string url = mApiUrl+mDeviceToken;
+            std::string url = mApiUrl+mDeviceToken;
 
-             std::cout<<url<<std::endl;
+            std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tApple push url\t" << url << std::endl;
 
-           //  curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, trace );
-             curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
-             curl_easy_setopt(curl, CURLOPT_URL,url.c_str());
-             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json.c_str());
-             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,json.size());
-             curl_easy_setopt(curl, CURLOPT_POST, true);
-             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
-             curl_easy_setopt(curl, CURLOPT_USE_SSL, true);
-             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
-             curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, true);
-             curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+            //  curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, trace );
+            curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
+            curl_easy_setopt(curl, CURLOPT_URL,url.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,json.size());
+            curl_easy_setopt(curl, CURLOPT_POST, true);
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+            curl_easy_setopt(curl, CURLOPT_USE_SSL, true);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
+            curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, true);
+            curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
 
+            std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tApple push result\t";
+            res = curl_easy_perform(curl);
+            std::cout << std::endl;
 
-             res = curl_easy_perform(curl);
+            if (res != CURLE_OK) {
+                std::cerr<< "[" << system_clock::now() << "]\t" << uuidString << "\tApple push conn error: " << curl_easy_strerror(res) << std::endl;
+            } else {
+                std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tApple push conn status: OK " << std::endl;
+                curl_easy_cleanup(curl);
+                curl_slist_free_all(chunk);
+                return true;
+            }
 
-             if(res != CURLE_OK){
-                 std::cerr<<"curl error: "<<curl_easy_strerror(res)<<std::endl;
-             }else{
-                 std::cout<<"result: "<<res<<std::endl;
-                 curl_easy_cleanup(curl);
-                 curl_slist_free_all(chunk);
-                 return true;
-             }
-             curl_easy_cleanup(curl);
-             curl_slist_free_all(chunk);
+            curl_easy_cleanup(curl);
+            curl_slist_free_all(chunk);
 
         } catch (std::exception &e) {
-            std::cout<<e.what()<<std::endl;
+            std::cout << "[" << system_clock::now() << "] " << e.what() << std::endl;
             curl_easy_cleanup(curl);
             curl_slist_free_all(chunk);
             return false;
@@ -224,13 +233,13 @@ void ApplePushModel::loadApiKey() {
                 mTeamId = std::move(teamId);
                 mKey = std::move(key);
             }else{
-                std::cout<<"Error JSON data invalid"<<std::endl;
+                std::cout << "Error JSON data invalid" << std::endl;
                 exit(EXIT_FAILURE);
             }
         }
 
     }else{
-        std::cout<<"Error loading APNS credentials, check if the settings.json, and key.pem exists"<<std::endl;
+        std::cout << "Error loading APNS credentials, check if the settings.json, and key.pem exists" << std::endl;
         exit(EXIT_FAILURE);
     }
 }

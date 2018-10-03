@@ -15,7 +15,7 @@ include_directories(libs/cpp-jwt/include)
 include_directories(libs/cpp-base64)
 
 
-set(SOURCE_FILES main.cpp HandlerFactory.cpp handlers/NorFoundHandler.cpp utils.cpp utils.h handlers/ApplePushHandler.cpp handlers/ApplePushHandler.h handlers/GooglePushHandler.cpp handlers/GooglePushHandler.h models/GooglePushModel.cpp models/GooglePushModel.h models/ApplePushModel.cpp models/ApplePushModel.h
+set(SOURCE_FILES main.cpp HandlerFactory.cpp handlers/NorFoundHandler.cpp utils.cpp utils.h date.h handlers/ApplePushHandler.cpp handlers/ApplePushHandler.h handlers/GooglePushHandler.cpp handlers/GooglePushHandler.h models/GooglePushModel.cpp models/GooglePushModel.h models/ApplePushModel.cpp models/ApplePushModel.h
          libs/cpp-jwt/include/jwt/jwt.hpp libs/cpp-base64/base64.h libs/cpp-base64/base64.cpp)
 add_executable(rocketChatMobilePushGateway ${SOURCE_FILES})
 
