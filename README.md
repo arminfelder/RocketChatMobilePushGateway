@@ -1,5 +1,7 @@
 ## lightweight, push gateway for RocketChat servers
 
+Fork of https://git.fairkom.net/chat/RocketChatMobilePushGateway
+
 ### usage
 
 How do mobile devices get push notifications?  The Android app is registering itself with Google Firebase Messaging (former GCM), by using given credentials, built into the app, 
