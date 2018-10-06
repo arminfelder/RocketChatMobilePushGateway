@@ -2,7 +2,7 @@ FROM afelder/proxygen:latest
 
 LABEL maintainer="armin.felder@osalliance.com"
 
-RUN apt-get update && apt-get --yes install libjsoncpp-dev libcurl4-openssl-dev cmake
+RUN apt-get update && apt-get --yes install libjsoncpp-dev libcurl4-openssl-dev cmake && apt-get clean
 ADD . /pushGateway/RocketChatMobilePushGateway 
 
 RUN cd /pushGateway/RocketChatMobilePushGateway \
