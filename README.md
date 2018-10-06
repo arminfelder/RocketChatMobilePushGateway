@@ -1,5 +1,7 @@
 ## lightweight, push gateway for RocketChat servers
 
+Fork of https://git.fairkom.net/chat/RocketChatMobilePushGateway
+
 ### usage
 
 How do mobile devices get push notifications?  The Android app is registering itself with Google Firebase Messaging (former GCM), by using given credentials, built into the app, 
@@ -27,6 +29,7 @@ This project has dependencies, included via submodules, so you have to clone rec
         1. create key (see https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_token_based_connection_to_apns)
         2. convert the *.p8 to pem
             - wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar
+            - wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar.pubkey
             - chmod +x jose.phar
             - ./jose.phar key:convert:pkcs1 $(./jose.phar key:load:key ./AuthKey_*.p8) > key.pem
         3. save the pem file apple/key.pem
@@ -35,13 +38,14 @@ This project has dependencies, included via submodules, so you have to clone rec
             ``{
                   "teamId":"YOUR_APPLE_DEVELOPER_TEAM_ID",
                   "key": "THE_KEY_RELATED_TO_THE_p8(also part of the name AuthKey_[KEY].p8)",
-                  "appId": "YOUR_APP_ID"   
+                  "appId": "YOUR_APP_ID (Bundle Id)"   
               }``
 
-### Docker
-- pass port 11000
-- mount your credentials folder into the container with -v /certs:/yourCertsFolder
+### Docker build
+- run `docker build .`
+- place the credentials in the servers "credentials" directory (see "manual build instructions" for details)
+- mount your credentials folder into the container with -v /yourCertsFolder:/certs and run image
     - yourCertsFolder/google/serverKey.txt
     - yourCertsFolder/apple/cred.pem (see https://github.com/joshuakuai/PusherCpp)
 
-e.g. docker run -t gateway -v /yourCertsFolder:/certs -p 0.0.0.0:80:11000
+  e.g. `docker run -t gateway -v /yourCertsFolder:/certs -p 0.0.0.0:80:11000 <image id>`

@@ -26,6 +26,12 @@
 #include <cstdlib>
 #include <regex>
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/string_generator.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 #include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <folly/io/async/SSLContext.h>
@@ -34,7 +40,9 @@
 #include <proxygen/lib/http/HTTPMessage.h>
 #include <proxygen/lib/http/session/HTTPUpstreamSession.h>
 #include <proxygen/lib/http/codec/HTTP2Codec.h>
+
 #include "GooglePushModel.h"
+#include "../date.h"
 
 std::string GooglePushModel::mApiKey;
 
@@ -42,11 +50,11 @@ void GooglePushModel::loadApiKey() {
     std::ifstream ifs("/certs/google/serverKey.txt");
     std::string content((std::istreambuf_iterator<char>(ifs)),
                         (std::istreambuf_iterator<char>()));
-    if(content.length()){
+    if (content.length()) {
         std::regex newLine("([\\n]+)");
         GooglePushModel::mApiKey = std::regex_replace(content,newLine,"");
-    }else{
-        std::cout<<"Error loading Google Push Key: file: /certs/google/serverKey.txt is empty or does not exist";
+    } else {
+        std::cout << "Error loading Google Push Key: file: /certs/google/serverKey.txt is empty or does not exist";
         exit(EXIT_FAILURE);
     }
 }
@@ -56,7 +64,7 @@ GooglePushModel::GooglePushModel(const std::string &pJson) {
     Json::Value obj;
     Json::FastWriter fast;
 
-    if(pJson.length()) {
+    if (pJson.length()) {
         reader.parse(pJson, obj);
 
         if (obj.isMember("token") && obj.isMember("options")) {
@@ -68,9 +76,9 @@ GooglePushModel::GooglePushModel(const std::string &pJson) {
             if (apn.isMember("text")) {
                 std::string temp = std::move(apn["text"].asString());
                 unsigned long index = 0;
-                while(true){
+                while (true){
                     index = temp.find('\n',index);
-                    if(index == std::string::npos){
+                    if (index == std::string::npos) {
                         break;
                     }
                     temp.replace(index, 1, "\\r\\n");
@@ -119,7 +127,7 @@ int GooglePushModel::trace(CURL *handle, curl_infotype type,
 
     switch (type) {
         case CURLINFO_TEXT:
-        std::cerr<<"== Info:"<< data<<std::endl;
+        std::cerr << "== Info:" <<  data << std::endl;
         default: /* in case a new one is introduced to shock us */
             return 0;
 
@@ -143,7 +151,7 @@ int GooglePushModel::trace(CURL *handle, curl_infotype type,
             break;
     }
 
-    std::cerr<<text<<": "<<data<<std::endl;
+    std::cerr << text << ": " << data << std::endl;
 
     return 0;
 }
@@ -171,8 +179,15 @@ bool GooglePushModel::sendMessage() {
     CURL *curl;
     CURLcode res;
 
+    using namespace date;
+    using namespace std::chrono;
+    boost::uuids::uuid uuidObj = boost::uuids::random_generator()();
+    std::string uuidString = boost::lexical_cast<std::string>(uuidObj);
+
+    std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tGoogle push data\t" << data << std::endl;
+
     curl = curl_easy_init();
-    if(curl){
+    if (curl) {
 
         struct curl_slist *chunk = nullptr;
 
@@ -190,13 +205,14 @@ bool GooglePushModel::sendMessage() {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
         curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, true);
 
-
-
+        std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tGoogle push result\t";
         res = curl_easy_perform(curl);
+        std::cout << std::endl;
 
-        if(res != CURLE_OK){
-            std::cerr<<"curl error: "<<curl_easy_strerror(res)<<std::endl;
-        }else{
+        if (res != CURLE_OK) {
+            std::cerr << "[" << system_clock::now() << "]\t" << uuidString << "\tGoogle push conn error: " << curl_easy_strerror(res) << std::endl;
+        } else {
+            std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tGoogle push conn status: OK" << std::endl;
             curl_easy_cleanup(curl);
             curl_slist_free_all(chunk);
             return true;
