@@ -21,17 +21,20 @@
 #ifndef ROCKETCHATMOBILEPUSHGATEWAY_APPLEPUSHMODEL_H
 #define ROCKETCHATMOBILEPUSHGATEWAY_APPLEPUSHMODEL_H
 
-#include <curl/curl.h>
-
-
 class ApplePushModel {
 
 public:
-    ApplePushModel(const std::string &pJson);
+    explicit ApplePushModel(const std::string &pJson);
 
     bool sendMessage();
 
+    [[deprecated("Replaced by environment variables(APNS_PRIVATE_KEY,APNS_TEAM_ID,APNS_KEY,APNS_APPID)")]]
     static void loadApiKey();
+
+    static void initFromSettings();
+
+    static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
+                                    void *this_ptr);
 
 private:
    // Pusher mPusher;

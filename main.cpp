@@ -27,6 +27,8 @@
 #include "HandlerFactory.h"
 #include "models/GooglePushModel.h"
 #include "models/ApplePushModel.h"
+#include "models/ForwardGatewayModel.h"
+#include "Settings.h"
 
 using namespace proxygen;
 
@@ -46,13 +48,21 @@ DEFINE_int32(threads, 0, "Number of threads to listen on. Numbers <= 0 "
 
 int main(int argc, char* argv[]) {
 
+    FLAGS_logtostderr = true;
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     google::InitGoogleLogging(argv[0]);
     google::InstallFailureSignalHandler();
 
-    GooglePushModel::loadApiKey();
-    ApplePushModel::loadApiKey();
+    Settings::init();
+
+    if(Settings::fcmServerKey().empty()&&Settings::apnsPrivateKey().empty()) {
+        GooglePushModel::loadApiKey();
+        ApplePushModel::loadApiKey();
+    }else{
+        GooglePushModel::initFromSettings();
+        ApplePushModel::initFromSettings();
+    }
 
 
 

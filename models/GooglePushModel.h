@@ -25,20 +25,26 @@
 #include <jsoncpp/json/json.h>
 #include <curl/curl.h>
 
+#include <proxygen/lib/http/HTTPMessage.h>
 
 
 class GooglePushModel {
 
-
 public:
-    GooglePushModel(const std::string &pJson);
+    explicit GooglePushModel(const std::string &pJson);
 
     bool sendMessage();
 
+    [[deprecated("Replaced by environment variable(FCM_SERVER_KEY)")]]
     static void loadApiKey();
     static int trace(CURL *handle, curl_infotype type,
                         char *data, size_t size,
                         void *userp);
+
+    static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
+                                    void *this_ptr);
+
+    static void initFromSettings();
 
 private:
     static std::string mApiKey;

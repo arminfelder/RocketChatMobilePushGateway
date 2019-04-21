@@ -45,6 +45,7 @@ public:
 
 private:
     std::unique_ptr<folly::IOBuf> mBody;
+    std::unique_ptr<HTTPMessage> mHeaders;
 };
 
 
