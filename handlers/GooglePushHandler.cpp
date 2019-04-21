@@ -49,7 +49,7 @@ void GooglePushHandler::onEOM() noexcept {
             if (googlePushModel.sendMessage()) {
                 ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
 
-            } else if(Settings::forwardGatewayEnabaled()){
+            } else if(Settings::forwardGatewayEnabled()){
                 ForwardGatewayModel forwardModel;
                 if(forwardModel.forwardMessage(std::move(mHeaders), body)){
                     ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
@@ -62,7 +62,7 @@ void GooglePushHandler::onEOM() noexcept {
             }
 
         } catch (Exception &e) {
-            std::cout << "exception " << e.what() << std::endl;
+            LOG(ERROR) << "exception " << e.what() << std::endl;
             ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push message").sendWithEOM();
         }
     } else {

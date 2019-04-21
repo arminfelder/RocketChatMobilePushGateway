@@ -21,7 +21,7 @@ public:
     static void claimRegistrationId(const std::string &pRegistrationId);
     static void unClaimRegistrationId(const std::string &pRegistrationId);
 
-    bool forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, const std::string &pBody) const;
+    bool forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, const std::string &pBody);
 
 private:
     static std::mutex mRegistrationIdsMutex;

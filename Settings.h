@@ -11,7 +11,7 @@ class Settings {
 public:
     static void init();
 
-    static bool forwardGatewayEnabaled();
+    static bool forwardGatewayEnabled();
     static const std::string &forwardGatewayUrl();
 
 private:

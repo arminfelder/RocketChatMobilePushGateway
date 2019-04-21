@@ -11,20 +11,20 @@ std::string Settings::mForwardGatewayUrl;
 bool Settings::mForwardGatewayEnabled = false;
 
 void Settings::init() {
-    std::string enableForwardGateway(std::getenv("FORWARD_GATEWAY_ENABLE"));
-    if(enableForwardGateway == "TRUE"){
+    auto enableForwardGateway = std::getenv("FORWARD_GATEWAY_ENABLE");
+    if(enableForwardGateway && std::string(enableForwardGateway) == "TRUE"){
         mForwardGatewayEnabled = true;
     }
-    std::string forwardGatewayUrl(std::getenv("FORWARD_GATEWAY_URL"));
-    if(!forwardGatewayUrl.empty()){
-        mForwardGatewayUrl = forwardGatewayUrl;
+    auto forwardGatewayUrl = std::getenv("FORWARD_GATEWAY_URL");
+    if(forwardGatewayUrl){
+        mForwardGatewayUrl = std::string(forwardGatewayUrl);
     }else{
         mForwardGatewayUrl = "https://gateway.rocket.chat";
     }
 
 }
 
-bool Settings::forwardGatewayEnabaled() {
+bool Settings::forwardGatewayEnabled() {
     return mForwardGatewayEnabled;
 }
 

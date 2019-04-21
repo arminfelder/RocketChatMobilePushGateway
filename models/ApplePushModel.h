@@ -21,9 +21,6 @@
 #ifndef ROCKETCHATMOBILEPUSHGATEWAY_APPLEPUSHMODEL_H
 #define ROCKETCHATMOBILEPUSHGATEWAY_APPLEPUSHMODEL_H
 
-#include <curl/curl.h>
-
-
 class ApplePushModel {
 
 public:
@@ -32,6 +29,9 @@ public:
     bool sendMessage();
 
     static void loadApiKey();
+
+    static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
+                                    void *this_ptr);
 
 private:
    // Pusher mPusher;

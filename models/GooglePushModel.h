@@ -25,6 +25,7 @@
 #include <jsoncpp/json/json.h>
 #include <curl/curl.h>
 
+#include <proxygen/lib/http/HTTPMessage.h>
 
 
 class GooglePushModel {
@@ -39,6 +40,9 @@ public:
     static int trace(CURL *handle, curl_infotype type,
                         char *data, size_t size,
                         void *userp);
+
+    static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
+                                    void *this_ptr);
 
 private:
     static std::string mApiKey;

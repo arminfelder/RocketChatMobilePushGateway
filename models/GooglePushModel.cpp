@@ -20,11 +20,13 @@
 
 #define UNUSED(x) (void)x;
 
+#include <curl/curl.h>
 #include <fstream>
 #include <iostream>
-#include <fstream>
 #include <cstdlib>
 #include <regex>
+
+#include <jsoncpp/json/json.h>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -48,14 +50,14 @@
 std::string GooglePushModel::mApiKey;
 
 void GooglePushModel::loadApiKey() {
-    std::ifstream ifs("/certs/google/serverKey.txt");
+    std::ifstream ifs("/home/armin/certs/google/serverKey.txt");
     std::string content((std::istreambuf_iterator<char>(ifs)),
                         (std::istreambuf_iterator<char>()));
     if (content.length()) {
         std::regex newLine("([\\n]+)");
         GooglePushModel::mApiKey = std::regex_replace(content,newLine,"");
     } else {
-        std::cout << "Error loading Google Push Key: file: /certs/google/serverKey.txt is empty or does not exist";
+        LOG(ERROR) << "Error loading Google Push Key: file: /certs/google/serverKey.txt is empty or does not exist";
         exit(EXIT_FAILURE);
     }
 }
@@ -75,7 +77,7 @@ GooglePushModel::GooglePushModel(const std::string &pJson) {
             Json::Value apn = options["gcm"];
             std::string test(fast.write(options));
             if (apn.isMember("text")) {
-                std::string temp = std::move(apn["text"].asString());
+                std::string temp = apn["text"].asString();
                 unsigned long index = 0;
                 while (true){
                     index = temp.find('\n',index);
@@ -90,27 +92,27 @@ GooglePushModel::GooglePushModel(const std::string &pJson) {
 
             }
             if (options.isMember("title")) {
-                mTitle = std::move(options["title"].asString());
+                mTitle = options["title"].asString();
             }
             if (options.isMember("text")) {
-                mText = std::move(options["text"].asString());
+                mText = options["text"].asString();
             }
             if (options.isMember("from")) {
-                mFrom = std::move(options["from"].asString());
+                mFrom = options["from"].asString();
             }
             if (options.isMember("badge")) {
                 mBadge = options["badge"].asInt();
             }
             if (options.isMember("payload")) {
-                mPayload = std::move(fast.write(options["payload"]));
+                mPayload = fast.write(options["payload"]);
             }
             if (options.isMember("topic")) {
-                mTopic = std::move(options["topic"].asString());
+                mTopic = options["topic"].asString();
             }
             if (options.isMember("sound")) {
-                mSound = std::move(options["sound"].asString());
+                mSound = options["sound"].asString();
             }
-            mDeviceToken = std::move(obj["token"].asString());
+            mDeviceToken = obj["token"].asString();
 
         }
     }
@@ -120,7 +122,7 @@ int GooglePushModel::trace(CURL *handle, curl_infotype type,
                                   char *data, size_t size,
                                   void *userp){
 
-    UNUSED(size);
+    UNUSED(size)
 
     const char *text;
     (void)handle; /* prevent compiler warning */
@@ -128,7 +130,7 @@ int GooglePushModel::trace(CURL *handle, curl_infotype type,
 
     switch (type) {
         case CURLINFO_TEXT:
-        std::cerr << "== Info:" <<  data << std::endl;
+            LOG(ERROR) << "== Info:" <<  data << std::endl;
         default: /* in case a new one is introduced to shock us */
             return 0;
 
@@ -155,6 +157,28 @@ int GooglePushModel::trace(CURL *handle, curl_infotype type,
     std::cerr << text << ": " << data << std::endl;
 
     return 0;
+}
+
+size_t GooglePushModel::curlWriteCallback(void *buffer, size_t size, size_t nmemb,
+                        void* this_ptr)
+{
+    auto thiz= static_cast<GooglePushModel*>(this_ptr);
+    Json::Reader reader;
+    Json::Value obj;
+    if(buffer != nullptr) {
+        std::string bufferString(static_cast<char*>(buffer),nmemb);
+        reader.parse(bufferString, obj);
+        if (obj.isMember("failure") && obj.isMember("success") && obj.isMember("results") && obj["failure"].asBool()) {
+            auto results = obj["results"];
+            for(const auto &elem: results){
+                if(elem.isMember("error") && elem["error"].asString() == "MismatchSenderId"){
+                    ForwardGatewayModel::claimRegistrationId(thiz->mDeviceToken);
+                    return 0;
+                }
+            }
+        }
+    }
+    return 1;
 }
 
 bool GooglePushModel::sendMessage() {
@@ -188,7 +212,7 @@ bool GooglePushModel::sendMessage() {
     boost::uuids::uuid uuidObj = boost::uuids::random_generator()();
     std::string uuidString = boost::lexical_cast<std::string>(uuidObj);
 
-    std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tGoogle push data\t" << data << std::endl;
+    LOG(INFO) << uuidString << "\tGoogle push data\t" << data;
 
     curl = curl_easy_init();
     if (curl) {
@@ -208,20 +232,19 @@ bool GooglePushModel::sendMessage() {
         curl_easy_setopt(curl, CURLOPT_USE_SSL, true);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
         curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, true);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback );
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
 
-        std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tGoogle push result\t";
         res = curl_easy_perform(curl);
-        std::cout << std::endl;
 
         if (res != CURLE_OK) {
-            std::cerr << "[" << system_clock::now() << "]\t" << uuidString << "\tGoogle push conn error: " << curl_easy_strerror(res) << std::endl;
-            long httpCode;
-            curl_easy_getinfo(curl,CURLINFO_RESPONSE_CODE,&httpCode);
-            if(httpCode == 403){
-                ForwardGatewayModel::claimRegistrationId(mDeviceToken);
+            if(res == CURLE_WRITE_ERROR){
+                LOG(INFO) << uuidString << "\tGoogle push device token rejected, forward message to forwardgateway";
+            }else{
+                LOG(ERROR) << uuidString << "\tGoogle push conn error: " << curl_easy_strerror(res);
             }
         } else {
-            std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tGoogle push conn status: OK" << std::endl;
+            LOG(INFO) << uuidString << "\tGoogle push conn status: OK";
             curl_easy_cleanup(curl);
             curl_slist_free_all(chunk);
             return true;

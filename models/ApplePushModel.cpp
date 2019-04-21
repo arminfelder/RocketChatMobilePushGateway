@@ -18,6 +18,7 @@
  *                                                                                                                  *
  ********************************************************************************************************************/
 
+#include <curl/curl.h>
 #include <exception>
 #include <jsoncpp/json/json.h>
 #include <iostream>
@@ -66,7 +67,7 @@ ApplePushModel::ApplePushModel(const std::string &pJson) {
             Json::Value apn = options["apn"];
             std::string test(fast.write(options));
             if (options.isMember("text")) {
-                std::string temp = std::move(options["text"].asString());
+                std::string temp = options["text"].asString();
                 unsigned long index = 0;
                 while (true) {
                     index = temp.find('\n', index);
@@ -81,35 +82,53 @@ ApplePushModel::ApplePushModel(const std::string &pJson) {
 
             }
             if (options.isMember("title")) {
-                mTitle = std::move(options["title"].asString());
+                mTitle = options["title"].asString();
             }
             /*if (options.isMember("text")) {
                 mText = std::move(options["text"].asString());
             }*/
             if (options.isMember("from")) {
-                mFrom = std::move(options["from"].asString());
+                mFrom = options["from"].asString();
             }
             if (options.isMember("badge")) {
                 mBadge = options["badge"].asInt();
             }
             if (options.isMember("payload")) {
-                //std::string test = fast.write(options["payload"]);
-               // std::string test4 = Json::valueToQuotedString(test.c_str());
-
-
-                mPayload = std::move(fast.write(options["payload"]));
+                mPayload = fast.write(options["payload"]);
             }
             if (options.isMember("topic")) {
-                mTopic = std::move(options["topic"].asString());
+                mTopic = options["topic"].asString();
             }
             if (options.isMember("sound")) {
-                mSound = std::move(options["sound"].asString());
+                mSound = options["sound"].asString();
             }
-            mDeviceToken = std::move(obj["token"].asString());
+            mDeviceToken = obj["token"].asString();
 
         }
     }
 
+}
+
+size_t ApplePushModel::curlWriteCallback(void *buffer, size_t size, size_t nmemb,
+                                          void* this_ptr)
+{
+    auto thiz= static_cast<ApplePushModel*>(this_ptr);
+    Json::Reader reader;
+    Json::Value obj;
+    if(buffer != nullptr) {
+        std::string bufferString(static_cast<char*>(buffer),nmemb);
+        reader.parse(bufferString, obj);
+        if (obj.isMember("failure") && obj.isMember("success") && obj.isMember("results") && obj["failure"].asBool()) {
+            auto results = obj["results"];
+            for(const auto &elem: results){
+                if(elem.isMember("error") && elem["error"].asString() == "MismatchSenderId"){
+                    ForwardGatewayModel::claimRegistrationId(thiz->mDeviceToken);
+                    return 0;
+                }
+            }
+        }
+    }
+    return 1;
 }
 
 bool ApplePushModel::sendMessage() {
@@ -143,7 +162,7 @@ bool ApplePushModel::sendMessage() {
     boost::uuids::uuid uuidObj = boost::uuids::random_generator()();
     std::string uuidString = boost::lexical_cast<std::string>(uuidObj);
 
-    std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tApple push data\t" << json << std::endl;
+    LOG(INFO) << uuidString << "\tApple push data\t" << json << std::endl;
 
     CURL *curl;
     CURLcode res;
@@ -178,7 +197,7 @@ bool ApplePushModel::sendMessage() {
 
             std::string url = mApiUrl+mDeviceToken;
 
-            std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tApple push url\t" << url << std::endl;
+            LOG(INFO) << uuidString << "\tApple push url\t" << url;
 
             //  curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, trace );
             curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
@@ -191,20 +210,19 @@ bool ApplePushModel::sendMessage() {
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
             curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, true);
             curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback );
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
 
-            std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tApple push result\t";
             res = curl_easy_perform(curl);
-            std::cout << std::endl;
 
             if (res != CURLE_OK) {
-                std::cerr<< "[" << system_clock::now() << "]\t" << uuidString << "\tApple push conn error: " << curl_easy_strerror(res) << std::endl;
-                long httpCode;
-                curl_easy_getinfo(curl,CURLINFO_RESPONSE_CODE,&httpCode);
-                if(httpCode == 403){
-                    ForwardGatewayModel::claimRegistrationId(mDeviceToken);
+                if(res == CURLE_WRITE_ERROR){
+                    LOG(INFO) <<"\tApple push device token rejected, forward message to forwardgateway";
+                }else {
+                    LOG(ERROR) << "\tApple push conn error: " << curl_easy_strerror(res);
                 }
             }else {
-                std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tApple push conn status: OK " << std::endl;
+                LOG(INFO) << uuidString << "\tApple push conn status: OK" ;
                 curl_easy_cleanup(curl);
                 curl_slist_free_all(chunk);
                 return true;
@@ -214,19 +232,20 @@ bool ApplePushModel::sendMessage() {
             curl_slist_free_all(chunk);
 
         } catch (std::exception &e) {
-            std::cout << "[" << system_clock::now() << "] " << e.what() << std::endl;
+            LOG(INFO) << e.what();
             curl_easy_cleanup(curl);
             curl_slist_free_all(chunk);
             return false;
         }
-
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(chunk);
     }
     return false;
 }
 
 void ApplePushModel::loadApiKey() {
-    std::ifstream ifsPem("/certs/apple/key.pem");
-    std::ifstream ifsSettings("/certs/apple/settings.json");
+    std::ifstream ifsPem("/home/armin/certs/apple/key.pem");
+    std::ifstream ifsSettings("/home/armin/certs/apple/settings.json");
     std::string pemContent((std::istreambuf_iterator<char>(ifsPem)),(std::istreambuf_iterator<char>()));
     std::string settingsContent((std::istreambuf_iterator<char>(ifsSettings)),(std::istreambuf_iterator<char>()));
     if(pemContent.length()&&settingsContent.length()){
@@ -243,13 +262,13 @@ void ApplePushModel::loadApiKey() {
                 mTeamId = std::move(teamId);
                 mKey = std::move(key);
             }else{
-                std::cout << "Error JSON data invalid" << std::endl;
+                LOG(ERROR) << "Error JSON data invalid";
                 exit(EXIT_FAILURE);
             }
         }
 
     }else{
-        std::cout << "Error loading APNS credentials, check if the settings.json, and key.pem exists" << std::endl;
+        LOG(ERROR) << "Error loading APNS credentials, check if the settings.json, and key.pem exists";
         exit(EXIT_FAILURE);
     }
 }

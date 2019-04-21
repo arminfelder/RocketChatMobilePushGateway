@@ -27,7 +27,8 @@
 #include "HandlerFactory.h"
 #include "models/GooglePushModel.h"
 #include "models/ApplePushModel.h"
-#include "models/ForwardGatewayModel.h
+#include "models/ForwardGatewayModel.h"
+#include "Settings.h"
 
 using namespace proxygen;
 
@@ -47,13 +48,11 @@ DEFINE_int32(threads, 0, "Number of threads to listen on. Numbers <= 0 "
 
 int main(int argc, char* argv[]) {
 
+    FLAGS_logtostderr = 1;
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     google::InitGoogleLogging(argv[0]);
     google::InstallFailureSignalHandler();
-
-
-    //parse environment variables
 
     Settings::init();
 

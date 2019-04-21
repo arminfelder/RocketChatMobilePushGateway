@@ -26,7 +26,7 @@ NotFoundHandler::NotFoundHandler() {
 }
 
 void NotFoundHandler::onRequest(std::unique_ptr<proxygen::HTTPMessage> headers) noexcept {
-    UNUSED(headers);
+    UNUSED(headers)
 }
 
 void NotFoundHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
@@ -43,7 +43,7 @@ void NotFoundHandler::onEOM() noexcept {
 }
 
 void NotFoundHandler::onUpgrade(proxygen::UpgradeProtocol proto) noexcept {
-    UNUSED(proto);
+    UNUSED(proto)
 }
 
 void NotFoundHandler::requestComplete() noexcept {
@@ -51,5 +51,5 @@ void NotFoundHandler::requestComplete() noexcept {
 }
 
 void NotFoundHandler::onError(proxygen::ProxygenError err) noexcept {
-    UNUSED(err);
+    UNUSED(err)
 }

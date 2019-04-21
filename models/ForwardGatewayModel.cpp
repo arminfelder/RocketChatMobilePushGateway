@@ -4,9 +4,11 @@
 
 #include <curl/curl.h>
 #include <iostream>
-#include <chrono>
-#include <regex>
+#include <cstdlib>
+
+#include "../date.h"
 #include "ForwardGatewayModel.h"
+#include "../Settings.h"
 
 std::mutex ForwardGatewayModel::mRegistrationIdsMutex;
 std::unordered_set<std::string> ForwardGatewayModel::mRegistrationIds;
@@ -27,7 +29,7 @@ void ForwardGatewayModel::unClaimRegistrationId(const std::string &pRegistration
 }
 
 
-bool ForwardGatewayModel::forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, const std::string &pBody) const {
+bool ForwardGatewayModel::forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, const std::string &pBody) {
     CURL *curl;
     CURLcode res;
     curl = curl_easy_init();
@@ -36,8 +38,17 @@ bool ForwardGatewayModel::forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, 
         try {
 
             std::string url = pHeaders->getURL();
+            std::string path = pHeaders->getPath();
+            auto headers = pHeaders->getHeaders();
+            auto host = headers.rawGet("Host");
+            headers.forEachWithCode([&] (HTTPHeaderCode code,
+                                                                const std::string& header,
+                                           const std::string& val) {
+                       std::cout << header << "(" << code << "): " << val;
+                    });
+            url = Settings::forwardGatewayUrl()+path;
             curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
-            curl_easy_setopt(curl, CURLOPT_URL,pHeaders->getURL().c_str());
+            curl_easy_setopt(curl, CURLOPT_URL,url.c_str());
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, pBody.c_str());
             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,pBody.size());
             curl_easy_setopt(curl, CURLOPT_POST, true);
@@ -46,23 +57,27 @@ bool ForwardGatewayModel::forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, 
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
             curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, true);
 
-            std::cout << "[" << std::chrono::system_clock::now() << "]\t" << "\tForwardgateway result\t";
             res = curl_easy_perform(curl);
-            std::cout << std::endl;
 
             if (res != CURLE_OK) {
-                std::cerr<< "[" << std::chrono::system_clock::now() << "]\t" << "\tForwardgateway conn error: " << curl_easy_strerror(res) << std::endl;
+                if(res == CURLE_WRITE_ERROR){
+
+                }
+                LOG(ERROR)<< "\tForwardgateway error: " << curl_easy_strerror(res);
             } else {
-                std::cout << "[" << std::chrono::system_clock::now() << "]\t" << "\tForwardgateway conn status: OK " << std::endl;
+                LOG(INFO) << "\tForwardgateway conn status: OK ";
                 curl_easy_cleanup(curl);
                 curl_slist_free_all(chunk);
                 return true;
             }
         } catch (std::exception &e) {
-            std::cout << "[" << std::chrono::system_clock::now() << "] " << e.what() << std::endl;
+            LOG(ERROR) << e.what();
             curl_easy_cleanup(curl);
             curl_slist_free_all(chunk);
             return false;
         }
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(chunk);
     }
+    return false;
 }
