@@ -7,7 +7,7 @@ ADD . /pushGateway/RocketChatMobilePushGateway
 
 RUN cd /pushGateway/RocketChatMobilePushGateway \
    && cmake . \
-   && make \
+   && make -j$[$(nproc) + 1] \
    && rm CMake* -rf \
    && rm cmake* -rf
 

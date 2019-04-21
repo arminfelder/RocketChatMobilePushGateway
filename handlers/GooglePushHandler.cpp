@@ -54,7 +54,7 @@ void GooglePushHandler::onEOM() noexcept {
                 if(forwardModel.forwardMessage(std::move(mHeaders), body)){
                     ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
                 }else{
-                    ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push message").sendWithEOM();
+                    ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push message through forwardgateway").sendWithEOM();
                 }
             }else {
                 ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push message").sendWithEOM();
