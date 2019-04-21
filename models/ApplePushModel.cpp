@@ -41,6 +41,7 @@
 #include "../libs/cpp-jwt/include/jwt/algorithm.hpp"
 #include "../libs/cpp-jwt/include/jwt/parameters.hpp"
 #include "../libs/cpp-base64/base64.h"
+#include "ForwardGatewayModel.h"
 
 
 std::string ApplePushModel::mPem;
@@ -112,6 +113,10 @@ ApplePushModel::ApplePushModel(const std::string &pJson) {
 }
 
 bool ApplePushModel::sendMessage() {
+
+    if(ForwardGatewayModel::ownsRegistrationId(mDeviceToken)){
+        return false;
+    }
 
     Json::Value obj;
     Json::FastWriter fast;
@@ -193,7 +198,12 @@ bool ApplePushModel::sendMessage() {
 
             if (res != CURLE_OK) {
                 std::cerr<< "[" << system_clock::now() << "]\t" << uuidString << "\tApple push conn error: " << curl_easy_strerror(res) << std::endl;
-            } else {
+                long httpCode;
+                curl_easy_getinfo(curl,CURLINFO_RESPONSE_CODE,&httpCode);
+                if(httpCode == 403){
+                    ForwardGatewayModel::claimRegistrationId(mDeviceToken);
+                }
+            }else {
                 std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tApple push conn status: OK " << std::endl;
                 curl_easy_cleanup(curl);
                 curl_slist_free_all(chunk);

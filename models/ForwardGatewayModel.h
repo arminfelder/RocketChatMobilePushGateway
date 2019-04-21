@@ -9,14 +9,19 @@
 #include <unordered_set>
 #include <string>
 #include <mutex>
+#include <memory>
+#include <proxygen/lib/http/HTTPMessage.h>
+
+using namespace proxygen;
 
 class ForwardGatewayModel {
 
+public:
     static bool ownsRegistrationId(const std::string &pRegistrationId);
     static void claimRegistrationId(const std::string &pRegistrationId);
     static void unClaimRegistrationId(const std::string &pRegistrationId);
 
-    void forwardMessage() const;
+    bool forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, const std::string &pBody) const;
 
 private:
     static std::mutex mRegistrationIdsMutex;

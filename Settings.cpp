@@ -24,10 +24,10 @@ void Settings::init() {
 
 }
 
-bool Settings::forwardGatewayEnabaled() const {
+bool Settings::forwardGatewayEnabaled() {
     return mForwardGatewayEnabled;
 }
 
-const std::string &Settings::forwardGatewayUrl() const {
+const std::string &Settings::forwardGatewayUrl() {
     return mForwardGatewayUrl;
 }

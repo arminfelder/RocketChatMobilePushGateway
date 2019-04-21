@@ -22,11 +22,12 @@
 
 #include "ApplePushHandler.h"
 #include "../models/ApplePushModel.h"
-
+#include "../Settings.h"
+#include "../models/ForwardGatewayModel.h"
 
 
 void ApplePushHandler::onRequest(std::unique_ptr<HTTPMessage> headers) noexcept {
-    UNUSED(headers);
+    mHeaders = std::move(headers);
 }
 
 void ApplePushHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
@@ -38,7 +39,7 @@ void ApplePushHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
 }
 
 void ApplePushHandler::onUpgrade(proxygen::UpgradeProtocol prot) noexcept {
-    UNUSED(prot);
+    UNUSED(prot)
 }
 
 void ApplePushHandler::onEOM() noexcept {
@@ -50,14 +51,22 @@ void ApplePushHandler::onEOM() noexcept {
             if (applePushModel.sendMessage()) {
                 ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
 
-            } else {
-                ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push mesage").sendWithEOM();
+            }else if(Settings::forwardGatewayEnabaled()){
+                ForwardGatewayModel forwardModel;
+                if(forwardModel.forwardMessage(std::move(mHeaders), body)){
+                    ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
+                }else{
+                    ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push message").sendWithEOM();
+                }
+            }
+            else {
+                ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push message").sendWithEOM();
 
             }
 
         } catch (Exception &e) {
             std::cout << "exception " << e.what() << std::endl;
-            ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push mesage").sendWithEOM();
+            ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push message").sendWithEOM();
         }
     } else {
         ResponseBuilder(downstream_).status(400, "BAD REQUEST").body("failed to send push message").sendWithEOM();
@@ -69,5 +78,5 @@ void ApplePushHandler::requestComplete() noexcept {
 }
 
 void ApplePushHandler::onError(ProxygenError err) noexcept {
-    UNUSED(err);
+    UNUSED(err)
 }

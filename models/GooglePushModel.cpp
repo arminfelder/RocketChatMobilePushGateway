@@ -43,6 +43,7 @@
 
 #include "GooglePushModel.h"
 #include "../date.h"
+#include "ForwardGatewayModel.h"
 
 std::string GooglePushModel::mApiKey;
 
@@ -158,6 +159,9 @@ int GooglePushModel::trace(CURL *handle, curl_infotype type,
 
 bool GooglePushModel::sendMessage() {
 
+    if(ForwardGatewayModel::ownsRegistrationId(mDeviceToken)){
+        return false;
+    }
 
     Json::Value obj;
     Json::Value msg;
@@ -211,6 +215,11 @@ bool GooglePushModel::sendMessage() {
 
         if (res != CURLE_OK) {
             std::cerr << "[" << system_clock::now() << "]\t" << uuidString << "\tGoogle push conn error: " << curl_easy_strerror(res) << std::endl;
+            long httpCode;
+            curl_easy_getinfo(curl,CURLINFO_RESPONSE_CODE,&httpCode);
+            if(httpCode == 403){
+                ForwardGatewayModel::claimRegistrationId(mDeviceToken);
+            }
         } else {
             std::cout << "[" << system_clock::now() << "]\t" << uuidString << "\tGoogle push conn status: OK" << std::endl;
             curl_easy_cleanup(curl);
