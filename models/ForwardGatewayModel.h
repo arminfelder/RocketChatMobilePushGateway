@@ -23,6 +23,9 @@ public:
 
     bool forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, const std::string &pBody);
 
+    static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
+                                    void *this_ptr);
+
 private:
     static std::mutex mRegistrationIdsMutex;
     static std::unordered_set<std::string> mRegistrationIds;

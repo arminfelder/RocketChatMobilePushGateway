@@ -1,6 +1,4 @@
-## lightweight, push gateway for RocketChat servers
-
-Fork of https://git.fairkom.net/chat/RocketChatMobilePushGateway
+## lightweight, push gateway for Rocket.Chat servers
 
 ### usage
 
@@ -23,9 +21,23 @@ This project has dependencies, included via submodules, so you have to clone rec
 - install libjsoncpp-dev, libcurlpp0-dev, cmake
 - cmake 
 - make
-- place the credentials in the servers "credentials" directory:
-    - FCM -> google/serverKey.txt
-    - APNS ->
+- either:
+   - set the environment variables
+     - FCM_SERVER_KEY
+     - APNS_PRIVATE_KEY(PEM format)
+       1. create key (see https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_token_based_connection_to_apns)
+       2. convert the *.p8 to pem
+          - wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar
+          - wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar.pubkey
+          - chmod +x jose.phar
+          - ./jose.phar key:convert:pkcs1 $(./jose.phar key:load:key ./AuthKey_*.p8) > key.pem
+     - APNS_TEAM_ID
+     - APNS_KEY
+     - APNS_APPID
+     
+   - (depricated)place the credentials in the servers "credentials" directory:
+     - FCM -> google/serverKey.txt
+     - APNS ->
         1. create key (see https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_token_based_connection_to_apns)
         2. convert the *.p8 to pem
             - wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar
@@ -40,7 +52,10 @@ This project has dependencies, included via submodules, so you have to clone rec
                   "key": "THE_KEY_RELATED_TO_THE_p8(also part of the name AuthKey_[KEY].p8)",
                   "appId": "YOUR_APP_ID (Bundle Id)"   
               }``
-
+ - opional
+   - enable forward gateway(allows to support chaining of gateways e.g. your own and gateway.rocket.chat, to support your own as well as the official apps)
+     - set environment variable FORWARD_GATEWAY_ENABLE=TRUE
+     - if neccessary set FORWARD_GATEWAY_URL (default is https://gateway.rocket.chat)
 ### Docker build
 - run `docker build .`
 - place the credentials in the servers "credentials" directory (see "manual build instructions" for details)

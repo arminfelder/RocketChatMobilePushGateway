@@ -43,6 +43,7 @@
 #include "../libs/cpp-jwt/include/jwt/parameters.hpp"
 #include "../libs/cpp-base64/base64.h"
 #include "ForwardGatewayModel.h"
+#include "../Settings.h"
 
 
 std::string ApplePushModel::mPem;
@@ -156,8 +157,6 @@ bool ApplePushModel::sendMessage() {
     boost::uuids::uuid uuidObj = boost::uuids::random_generator()();
     std::string uuidString = boost::lexical_cast<std::string>(uuidObj);
 
-    LOG(INFO) << uuidString << "\tApple push data\t" << json << std::endl;
-
     CURL *curl;
     CURLcode res;
 
@@ -260,4 +259,11 @@ void ApplePushModel::loadApiKey() {
         LOG(ERROR) << "Error loading APNS credentials, check if the settings.json, and key.pem exists";
         exit(EXIT_FAILURE);
     }
+}
+
+void ApplePushModel::initFromSettings() {
+    mAppId = Settings::apnsAppId();
+    mPem = Settings::apnsPrivateKey();
+    mTeamId = Settings::apnsTeamId();
+    mKey = Settings::apnsKey();
 }

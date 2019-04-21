@@ -46,6 +46,7 @@
 #include "GooglePushModel.h"
 #include "../date.h"
 #include "ForwardGatewayModel.h"
+#include "../Settings.h"
 
 std::string GooglePushModel::mApiKey;
 
@@ -254,4 +255,9 @@ bool GooglePushModel::sendMessage() {
 
     }
     return false;
+}
+
+void GooglePushModel::initFromSettings() {
+    mApiKey = Settings::fcmServerKey();
+
 }

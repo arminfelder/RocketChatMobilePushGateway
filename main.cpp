@@ -48,7 +48,7 @@ DEFINE_int32(threads, 0, "Number of threads to listen on. Numbers <= 0 "
 
 int main(int argc, char* argv[]) {
 
-    FLAGS_logtostderr = 1;
+    FLAGS_logtostderr = true;
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     google::InitGoogleLogging(argv[0]);
@@ -56,8 +56,13 @@ int main(int argc, char* argv[]) {
 
     Settings::init();
 
-    GooglePushModel::loadApiKey();
-    ApplePushModel::loadApiKey();
+    if(Settings::fcmServerKey().empty()&&Settings::apnsPrivateKey().empty()) {
+        GooglePushModel::loadApiKey();
+        ApplePushModel::loadApiKey();
+    }else{
+        GooglePushModel::initFromSettings();
+        ApplePushModel::initFromSettings();
+    }
 
 
 

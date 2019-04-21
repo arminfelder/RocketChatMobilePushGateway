@@ -28,6 +28,16 @@ void ForwardGatewayModel::unClaimRegistrationId(const std::string &pRegistration
     mRegistrationIds.erase(pRegistrationId);
 }
 
+size_t ForwardGatewayModel::curlWriteCallback(void *buffer, size_t size, size_t nmemb, void *this_ptr) {
+
+    if (buffer != nullptr) {
+        std::string bufferString(static_cast<char *>(buffer), nmemb);
+        LOG(ERROR)<<"forwardgateway error response: "<<bufferString;
+        LOG(ERROR)<<"failed message: "<< reinterpret_cast<const char*>(this_ptr);
+        return 0;
+    }
+    return 1;
+}
 
 bool ForwardGatewayModel::forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, const std::string &pBody) {
     CURL *curl;
@@ -52,14 +62,18 @@ bool ForwardGatewayModel::forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, 
             curl_easy_setopt(curl, CURLOPT_USE_SSL, true);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
             curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, true);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, pBody.c_str());
+
 
             res = curl_easy_perform(curl);
 
             if (res != CURLE_OK) {
                 if(res == CURLE_WRITE_ERROR){
 
+                }else{
+                    LOG(ERROR)<< "\tForwardgateway error: " << curl_easy_strerror(res);
                 }
-                LOG(ERROR)<< "\tForwardgateway error: " << curl_easy_strerror(res);
             } else {
                 LOG(INFO) << "\tForwardgateway conn status: OK ";
                 curl_easy_cleanup(curl);

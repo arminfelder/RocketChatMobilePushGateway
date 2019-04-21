@@ -13,10 +13,20 @@ public:
 
     static bool forwardGatewayEnabled();
     static const std::string &forwardGatewayUrl();
+    static const std::string &fcmServerKey();
+    static const std::string &apnsPrivateKey();
+    static const std::string &apnsTeamId();
+    static const std::string &apnsAppId();
+    static const std::string &apnsKey();
 
 private:
     static bool mForwardGatewayEnabled;
     static std::string mForwardGatewayUrl;
+    static std::string mFcmServerKey;
+    static std::string mApnsPrivateKey;
+    static std::string mApnsTeamId;
+    static std::string mApnsKey;
+    static std::string mApnsAppId;
 };
 
 
