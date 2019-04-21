@@ -110,22 +110,16 @@ ApplePushModel::ApplePushModel(const std::string &pJson) {
 }
 
 size_t ApplePushModel::curlWriteCallback(void *buffer, size_t size, size_t nmemb,
-                                          void* this_ptr)
-{
-    auto thiz= static_cast<ApplePushModel*>(this_ptr);
+                                         void *this_ptr) {
+    auto thiz = static_cast<ApplePushModel *>(this_ptr);
     Json::Reader reader;
     Json::Value obj;
-    if(buffer != nullptr) {
-        std::string bufferString(static_cast<char*>(buffer),nmemb);
+    if (buffer != nullptr) {
+        std::string bufferString(static_cast<char *>(buffer), nmemb);
         reader.parse(bufferString, obj);
-        if (obj.isMember("failure") && obj.isMember("success") && obj.isMember("results") && obj["failure"].asBool()) {
-            auto results = obj["results"];
-            for(const auto &elem: results){
-                if(elem.isMember("error") && elem["error"].asString() == "MismatchSenderId"){
-                    ForwardGatewayModel::claimRegistrationId(thiz->mDeviceToken);
-                    return 0;
-                }
-            }
+        if (obj.isMember("reason") && obj["reason"].asString() == "DeviceTokenNotForTopic") {
+            ForwardGatewayModel::claimRegistrationId(thiz->mDeviceToken);
+            return 0;
         }
     }
     return 1;
@@ -133,7 +127,7 @@ size_t ApplePushModel::curlWriteCallback(void *buffer, size_t size, size_t nmemb
 
 bool ApplePushModel::sendMessage() {
 
-    if(ForwardGatewayModel::ownsRegistrationId(mDeviceToken)){
+    if (ForwardGatewayModel::ownsRegistrationId(mDeviceToken)) {
         return false;
     }
 
@@ -158,7 +152,7 @@ bool ApplePushModel::sendMessage() {
 
     using namespace date;
     using namespace std::chrono;
-    
+
     boost::uuids::uuid uuidObj = boost::uuids::random_generator()();
     std::string uuidString = boost::lexical_cast<std::string>(uuidObj);
 
@@ -174,11 +168,11 @@ bool ApplePushModel::sendMessage() {
         try {
 
             jwt::jwt_object obj{jwt::params::algorithm("ES256"),
-                    jwt::params::headers({
-                                                 {"alg", "ES256"},
-                                                 {"kid", mKey}
-                                         }),
-                    jwt::params::secret(mPem)
+                                jwt::params::headers({
+                                                             {"alg", "ES256"},
+                                                             {"kid", mKey}
+                                                     }),
+                                jwt::params::secret(mPem)
             };
 
             auto n = system_clock::now();
@@ -188,49 +182,43 @@ bool ApplePushModel::sendMessage() {
 
             std::string encoded_jwt = obj.signature();
 
-            chunk = curl_slist_append(chunk, std::string("Authorization: Bearer "+obj.signature()).c_str());
-            chunk = curl_slist_append(chunk, std::string("apns-id: "+uuidString).c_str());
+            chunk = curl_slist_append(chunk, std::string("Authorization: Bearer " + obj.signature()).c_str());
+            chunk = curl_slist_append(chunk, std::string("apns-id: " + uuidString).c_str());
             chunk = curl_slist_append(chunk, std::string("apns-expiration: 0").c_str());
             chunk = curl_slist_append(chunk, std::string("apns-priority: 10").c_str());
-            chunk = curl_slist_append(chunk, std::string("apns-topic: "+mAppId).c_str());
+            chunk = curl_slist_append(chunk, std::string("apns-topic: " + mAppId).c_str());
 
 
-            std::string url = mApiUrl+mDeviceToken;
-
-            LOG(INFO) << uuidString << "\tApple push url\t" << url;
+            std::string url = mApiUrl + mDeviceToken;
 
             //  curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, trace );
             curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
-            curl_easy_setopt(curl, CURLOPT_URL,url.c_str());
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json.c_str());
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,json.size());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, json.size());
             curl_easy_setopt(curl, CURLOPT_POST, true);
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
             curl_easy_setopt(curl, CURLOPT_USE_SSL, true);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
             curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, true);
             curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback );
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
 
             res = curl_easy_perform(curl);
 
             if (res != CURLE_OK) {
-                if(res == CURLE_WRITE_ERROR){
-                    LOG(INFO) <<"\tApple push device token rejected, forward message to forwardgateway";
-                }else {
+                if (res == CURLE_WRITE_ERROR) {
+                    LOG(INFO) << "\tApple push device token rejected, forward message to forwardgateway";
+                } else {
                     LOG(ERROR) << "\tApple push conn error: " << curl_easy_strerror(res);
                 }
-            }else {
-                LOG(INFO) << uuidString << "\tApple push conn status: OK" ;
+            } else {
+                LOG(INFO) << uuidString << "\tApple push conn status: OK";
                 curl_easy_cleanup(curl);
                 curl_slist_free_all(chunk);
                 return true;
             }
-
-            curl_easy_cleanup(curl);
-            curl_slist_free_all(chunk);
-
         } catch (std::exception &e) {
             LOG(INFO) << e.what();
             curl_easy_cleanup(curl);
@@ -239,6 +227,7 @@ bool ApplePushModel::sendMessage() {
         }
         curl_easy_cleanup(curl);
         curl_slist_free_all(chunk);
+        
     }
     return false;
 }
@@ -246,28 +235,28 @@ bool ApplePushModel::sendMessage() {
 void ApplePushModel::loadApiKey() {
     std::ifstream ifsPem("/home/armin/certs/apple/key.pem");
     std::ifstream ifsSettings("/home/armin/certs/apple/settings.json");
-    std::string pemContent((std::istreambuf_iterator<char>(ifsPem)),(std::istreambuf_iterator<char>()));
-    std::string settingsContent((std::istreambuf_iterator<char>(ifsSettings)),(std::istreambuf_iterator<char>()));
-    if(pemContent.length()&&settingsContent.length()){
+    std::string pemContent((std::istreambuf_iterator<char>(ifsPem)), (std::istreambuf_iterator<char>()));
+    std::string settingsContent((std::istreambuf_iterator<char>(ifsSettings)), (std::istreambuf_iterator<char>()));
+    if (pemContent.length() && settingsContent.length()) {
         mPem = pemContent;
         Json::Reader reader;
         Json::Value obj;
-        reader.parse(settingsContent,obj);
-        if(obj.isMember("appId")&&obj.isMember("teamId")&&obj.isMember("key")){
+        reader.parse(settingsContent, obj);
+        if (obj.isMember("appId") && obj.isMember("teamId") && obj.isMember("key")) {
             std::string appId = std::move(obj["appId"].asString());
             std::string teamId = std::move(obj["teamId"].asString());
             std::string key = std::move(obj["key"].asString());
-            if(appId.length()&&teamId.length()&&key.length()){
+            if (appId.length() && teamId.length() && key.length()) {
                 mAppId = std::move(appId);
                 mTeamId = std::move(teamId);
                 mKey = std::move(key);
-            }else{
+            } else {
                 LOG(ERROR) << "Error JSON data invalid";
                 exit(EXIT_FAILURE);
             }
         }
 
-    }else{
+    } else {
         LOG(ERROR) << "Error loading APNS credentials, check if the settings.json, and key.pem exists";
         exit(EXIT_FAILURE);
     }

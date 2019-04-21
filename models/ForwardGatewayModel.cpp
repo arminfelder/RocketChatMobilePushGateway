@@ -41,11 +41,7 @@ bool ForwardGatewayModel::forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, 
             std::string path = pHeaders->getPath();
             auto headers = pHeaders->getHeaders();
             auto host = headers.rawGet("Host");
-            headers.forEachWithCode([&] (HTTPHeaderCode code,
-                                                                const std::string& header,
-                                           const std::string& val) {
-                       std::cout << header << "(" << code << "): " << val;
-                    });
+
             url = Settings::forwardGatewayUrl()+path;
             curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
             curl_easy_setopt(curl, CURLOPT_URL,url.c_str());
