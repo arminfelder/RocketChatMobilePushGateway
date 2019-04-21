@@ -243,9 +243,9 @@ void ApplePushModel::loadApiKey() {
         Json::Value obj;
         reader.parse(settingsContent, obj);
         if (obj.isMember("appId") && obj.isMember("teamId") && obj.isMember("key")) {
-            std::string appId = std::move(obj["appId"].asString());
-            std::string teamId = std::move(obj["teamId"].asString());
-            std::string key = std::move(obj["key"].asString());
+            std::string appId = obj["appId"].asString();
+            std::string teamId = obj["teamId"].asString();
+            std::string key = obj["key"].asString();
             if (appId.length() && teamId.length() && key.length()) {
                 mAppId = std::move(appId);
                 mTeamId = std::move(teamId);
