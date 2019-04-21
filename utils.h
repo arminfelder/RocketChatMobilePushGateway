@@ -28,6 +28,7 @@
 
 namespace utils {
     std::vector<std::string> getSegments(const std::string &pPath);
+    bool validateUrl(const std::string &pUrl);
 }
 
 

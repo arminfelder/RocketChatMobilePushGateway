@@ -27,6 +27,7 @@
 #include "HandlerFactory.h"
 #include "models/GooglePushModel.h"
 #include "models/ApplePushModel.h"
+#include "models/ForwardGatewayModel.h
 
 using namespace proxygen;
 
@@ -50,6 +51,11 @@ int main(int argc, char* argv[]) {
 
     google::InitGoogleLogging(argv[0]);
     google::InstallFailureSignalHandler();
+
+
+    //parse environment variables
+
+    Settings::init();
 
     GooglePushModel::loadApiKey();
     ApplePushModel::loadApiKey();
