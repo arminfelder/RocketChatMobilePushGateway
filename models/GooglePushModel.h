@@ -41,10 +41,12 @@ public:
                         char *data, size_t size,
                         void *userp);
 
+    static void initFromSettings();
+
     static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
                                     void *this_ptr);
 
-    static void initFromSettings();
+    int returnStatusCode() const;
 
 private:
     static std::string mApiKey;
@@ -65,6 +67,7 @@ private:
     std::string mTopic;
     int mBadge{0};
 
+    int mReturnStatusCode;
 
 };
 

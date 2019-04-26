@@ -120,10 +120,11 @@ size_t ApplePushModel::curlWriteCallback(void *buffer, size_t size, size_t nmemb
         reader.parse(bufferString, obj);
         if (obj.isMember("reason") && obj["reason"].asString() == "DeviceTokenNotForTopic") {
             ForwardGatewayModel::claimRegistrationId(thiz->mDeviceToken);
+            thiz->mReturnStatusCode = 406;
             return 0;
         }
     }
-    return 1;
+    return nmemb;
 }
 
 bool ApplePushModel::sendMessage() {
@@ -211,22 +212,26 @@ bool ApplePushModel::sendMessage() {
                     LOG(INFO) << "\tApple push device token rejected, forward message to forwardgateway";
                 } else {
                     LOG(ERROR) << "\tApple push conn error: " << curl_easy_strerror(res);
+                    mReturnStatusCode = 500;
                 }
             } else {
                 LOG(INFO) << uuidString << "\tApple push conn status: OK";
                 curl_easy_cleanup(curl);
                 curl_slist_free_all(chunk);
+                mReturnStatusCode = 200;
                 return true;
             }
         } catch (std::exception &e) {
             LOG(INFO) << e.what();
             curl_easy_cleanup(curl);
             curl_slist_free_all(chunk);
+            mReturnStatusCode = 500;
             return false;
         }
         curl_easy_cleanup(curl);
         curl_slist_free_all(chunk);
-
+    }else{
+        mReturnStatusCode = 500;
     }
     return false;
 }
@@ -266,4 +271,8 @@ void ApplePushModel::initFromSettings() {
     mPem = Settings::apnsPrivateKey();
     mTeamId = Settings::apnsTeamId();
     mKey = Settings::apnsKey();
+}
+
+int ApplePushModel::returnStatusCode() const {
+    return mReturnStatusCode;
 }
