@@ -52,15 +52,15 @@ void ApplePushHandler::onEOM() noexcept {
                 ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
 
             }else if(Settings::forwardGatewayEnabled()){
-                ForwardGatewayModel forwardModel;
+                ForwardGatewayModel forwardModel{};
                 if(forwardModel.forwardMessage(std::move(mHeaders), body)){
                     ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
                 }else{
-                    ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push message through forwardgateway").sendWithEOM();
+                    ResponseBuilder(downstream_).status(forwardModel.returnStatusCode(), "FAILURE").body("failed to send push message through forwardgateway").sendWithEOM();
                 }
             }
             else {
-                ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push message").sendWithEOM();
+                ResponseBuilder(downstream_).status(applePushModel.returnStatusCode(), "FAILURE").body("failed to send push message").sendWithEOM();
 
             }
 

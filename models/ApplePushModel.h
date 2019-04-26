@@ -35,10 +35,9 @@ public:
 
     static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
                                     void *this_ptr);
+    int returnStatusCode() const;
 
 private:
-   // Pusher mPusher;
-
     const std::string mApiUrl{"https://api.push.apple.com/3/device/"};
 
     static std::string mPem;
@@ -57,8 +56,10 @@ private:
     bool mSent{false};
     int mSendind{0};
     std::string mTopic;
-
     int mBadge{0};
+
+    int mReturnStatusCode;
+
 };
 
 

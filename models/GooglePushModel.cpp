@@ -174,12 +174,13 @@ size_t GooglePushModel::curlWriteCallback(void *buffer, size_t size, size_t nmem
             for(const auto &elem: results){
                 if(elem.isMember("error") && elem["error"].asString() == "MismatchSenderId"){
                     ForwardGatewayModel::claimRegistrationId(thiz->mDeviceToken);
+                    thiz->mReturnStatusCode = 406;
                     return 0;
                 }
             }
         }
     }
-    return 1;
+    return nmemb;
 }
 
 bool GooglePushModel::sendMessage() {
@@ -243,16 +244,20 @@ bool GooglePushModel::sendMessage() {
                 LOG(INFO) << uuidString << "\tGoogle push device token rejected, forward message to forwardgateway";
             }else{
                 LOG(ERROR) << uuidString << "\tGoogle push conn error: " << curl_easy_strerror(res);
+                mReturnStatusCode = 500;
             }
         } else {
             LOG(INFO) << uuidString << "\tGoogle push conn status: OK";
             curl_easy_cleanup(curl);
             curl_slist_free_all(chunk);
+            mReturnStatusCode = 200;
             return true;
         }
         curl_easy_cleanup(curl);
         curl_slist_free_all(chunk);
 
+    }else{
+        mReturnStatusCode = 500;
     }
     return false;
 }
@@ -260,4 +265,8 @@ bool GooglePushModel::sendMessage() {
 void GooglePushModel::initFromSettings() {
     mApiKey = Settings::fcmServerKey();
 
+}
+
+int GooglePushModel::returnStatusCode() const {
+    return mReturnStatusCode;
 }

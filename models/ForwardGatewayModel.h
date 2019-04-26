@@ -25,8 +25,9 @@ public:
 
     static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
                                     void *this_ptr);
-
+    int returnStatusCode() const;
 private:
+    int mReturnStatusCode;
     static std::mutex mRegistrationIdsMutex;
     static std::unordered_set<std::string> mRegistrationIds;
 
