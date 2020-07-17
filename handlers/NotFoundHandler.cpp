@@ -19,11 +19,7 @@
  ********************************************************************************************************************/
 #define UNUSED(x) (void)x;
 
-#include "NorFoundHandler.h"
-
-NotFoundHandler::NotFoundHandler() {
-
-}
+#include "NotFoundHandler.h"
 
 void NotFoundHandler::onRequest(std::unique_ptr<proxygen::HTTPMessage> headers) noexcept {
     UNUSED(headers)

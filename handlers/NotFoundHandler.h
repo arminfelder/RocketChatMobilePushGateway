@@ -31,7 +31,6 @@ using namespace proxygen;
 
 class NotFoundHandler : public RequestHandler{
 public:
-    NotFoundHandler();
 
     void onRequest(std::unique_ptr<proxygen::HTTPMessage> headers) noexcept override ;
 

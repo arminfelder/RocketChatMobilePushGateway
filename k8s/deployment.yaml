@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pushgateway
+spec:
+  selector:
+    matchLabels:
+      app: pushgateway
+  template:
+    metadata:
+      labels:
+        app: pushgateway
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: pushgateway
+          image: afelder/mobilepushgatewayforrocketchat:1.2.1
+          envFrom:
+            - configMapRef:
+                name: pushgateway
+            - secretRef:
+                name: pushgateway
+          resources:
+            limits:
+              memory: 50Mi
+            requests:
+              memory: 10Mi

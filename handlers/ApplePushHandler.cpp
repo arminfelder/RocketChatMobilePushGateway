@@ -47,7 +47,6 @@ void ApplePushHandler::onEOM() noexcept {
         try {
             std::string body(reinterpret_cast<const char *>((*mBody).data()));
             ApplePushModel applePushModel(body);
-            std::string response;
             if (applePushModel.sendMessage()) {
                 ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
 

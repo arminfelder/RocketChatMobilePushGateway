@@ -19,24 +19,22 @@
  ********************************************************************************************************************/
 
 
-#include <regex>
 #include "utils.h"
 
 
 namespace utils{
     std::vector<std::string> getSegments(const std::string &pPath){
-        unsigned long current = 0;
         long next = -1;
         std::vector<std::string> segments;
         do{
-            current = static_cast<size_t >(next + 1);
+            auto current = static_cast<size_t >(next + 1);
             next = pPath.find_first_of('/',current);
 
             std::string segment = pPath.substr(current, next-current);
             if(!segment.empty()) {
                 segments.push_back(std::move(segment));
             }
-        }while(next != std::string::npos);
+        }while(static_cast<unsigned long>(next) != std::string::npos);
 
 
 

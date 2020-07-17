@@ -19,7 +19,7 @@ link_directories(/usr/local/lib/proxygen)
 set(SOURCE_FILES
         main.cpp
         HandlerFactory.cpp
-        handlers/NorFoundHandler.cpp
+        handlers/NotFoundHandler.cpp
         utils.cpp
         date.h
         Settings.cpp

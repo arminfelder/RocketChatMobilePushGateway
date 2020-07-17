@@ -45,7 +45,6 @@ void GooglePushHandler::onEOM() noexcept {
         try {
             std::string body(reinterpret_cast<const char *>((*mBody).data()));
             GooglePushModel googlePushModel(body);
-            std::string response;
             if (googlePushModel.sendMessage()) {
                 ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
 
