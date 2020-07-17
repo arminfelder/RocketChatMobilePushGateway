@@ -64,3 +64,6 @@ This project has dependencies, included via submodules, so you have to clone rec
     - yourCertsFolder/apple/cred.pem (see https://github.com/joshuakuai/PusherCpp)
 
   e.g. `docker run -t gateway -v /yourCertsFolder:/certs -p 0.0.0.0:80:11000 <image id>`
+  
+### Kubernetes
+adapt the exmaple files under ./k8s for your needs

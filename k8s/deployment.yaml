@@ -15,7 +15,7 @@ spec:
         runAsNonRoot: true
       containers:
         - name: pushgateway
-          image: afelder/mobilepushgatewayforrocketchat:1.2.1
+          image: afelder/mobilepushgatewayforrocketchat:1.2.0
           envFrom:
             - configMapRef:
                 name: pushgateway
