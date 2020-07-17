@@ -3,5 +3,5 @@ kind: ConfigMap
 metadata:
   name: pushgateway
 data:
-  FORWARD_GATEWAY_ENABLE: FALSE
-  FORWARD_GATEWAY_URL: https://gateway.rocket.chat
+  FORWARD_GATEWAY_ENABLE: "FALSE"
+  FORWARD_GATEWAY_URL: "https://gateway.rocket.chat"

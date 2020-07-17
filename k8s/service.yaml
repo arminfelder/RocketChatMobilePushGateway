@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pushgateway
+spec:
+  ports:
+    - port: 80
+      targetPort: 11000
+  selector:
+    app: pushgateway
