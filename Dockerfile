@@ -33,5 +33,5 @@ EXPOSE 11000
 
 USER 1001
 
-RUN ["rocketChatMobilePushGateway"]
+CMD ["rocketChatMobilePushGateway"]
 
