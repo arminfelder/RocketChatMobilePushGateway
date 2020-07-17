@@ -14,6 +14,7 @@ include_directories(/usr/local/include/r3/)
 include_directories(libs/cpp-jwt/include)
 include_directories(libs/cpp-base64)
 
+link_directories(/usr/local/lib/proxygen)
 
 set(SOURCE_FILES
         main.cpp
@@ -32,4 +33,7 @@ set(SOURCE_FILES
         )
 add_executable(rocketChatMobilePushGateway ${SOURCE_FILES})
 
-target_link_libraries(rocketChatMobilePushGateway -lwangle -lfolly -lz -lssl -lcrypto -levent -lgflags -lglog  -L/usr/lib64 -lpthread -pthread -lfolly -lglog -ldouble-conversion -lboost_system -lboost_thread -lproxygenhttpserver -ljsoncpp -lcurl)
+add_library(fizz SHARED IMPORTED)
+add_library(proxygenhttpserver SHARED IMPORTED)
+
+target_link_libraries(rocketChatMobilePushGateway -lfizz -lwangle -lfolly -lz -lssl -lcrypto -levent -lgflags -lglog  -L/usr/lib64 -lpthread -pthread -lfolly -lglog -ldouble-conversion -lboost_system -lboost_context -lboost_thread -lproxygen -lproxygenhttpserver -ljsoncpp -lcurl )
