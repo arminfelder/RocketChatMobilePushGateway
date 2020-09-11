@@ -18,8 +18,6 @@
  *                                                                                                                  *
  ********************************************************************************************************************/
 
-#define UNUSED(x) (void)x;
-
 #include "HandlerFactory.h"
 
 void HandlerFactory::onServerStart(folly::EventBase* /*evb*/) noexcept{
@@ -32,7 +30,7 @@ void HandlerFactory::onServerStop() noexcept{
 }
 
 RequestHandler* HandlerFactory::onRequest(RequestHandler* requestHandler, HTTPMessage* httpMessage) noexcept{
-   UNUSED(requestHandler);
+   std::ignore = requestHandler;
     if(httpMessage) {
         std::vector<std::string> segments = utils::getSegments(httpMessage->getURL());
         if(segments.size()>2){

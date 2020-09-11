@@ -17,12 +17,11 @@
  * along with RocketChatMobilePushGateway. If not, see <http://www.gnu.org/licenses/>.                              *
  *                                                                                                                  *
  ********************************************************************************************************************/
-#define UNUSED(x) (void)x;
 
 #include "NotFoundHandler.h"
 
 void NotFoundHandler::onRequest(std::unique_ptr<proxygen::HTTPMessage> headers) noexcept {
-    UNUSED(headers)
+    std::ignore = headers;
 }
 
 void NotFoundHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
@@ -39,7 +38,7 @@ void NotFoundHandler::onEOM() noexcept {
 }
 
 void NotFoundHandler::onUpgrade(proxygen::UpgradeProtocol proto) noexcept {
-    UNUSED(proto)
+    std::ignore = proto;
 }
 
 void NotFoundHandler::requestComplete() noexcept {
@@ -47,5 +46,5 @@ void NotFoundHandler::requestComplete() noexcept {
 }
 
 void NotFoundHandler::onError(proxygen::ProxygenError err) noexcept {
-    UNUSED(err)
+    std::ignore = err;
 }

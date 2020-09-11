@@ -35,7 +35,6 @@ public:
 
     bool sendMessage();
 
-    [[deprecated("Replaced by environment variable(FCM_SERVER_KEY)")]]
     static void loadApiKey();
     static int trace(CURL *handle, curl_infotype type,
                         char *data, size_t size,

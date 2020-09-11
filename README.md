@@ -35,7 +35,7 @@ This project has dependencies, included via submodules, so you have to clone rec
      - APNS_KEY
      - APNS_APPID
      
-   - (depricated)place the credentials in the servers "credentials" directory:
+   - place the credentials in the servers "credentials" directory:
      - FCM -> google/serverKey.txt
      - APNS ->
         1. create key (see https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_token_based_connection_to_apns)

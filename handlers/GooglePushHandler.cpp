@@ -17,7 +17,6 @@
  * along with RocketChatMobilePushGateway. If not, see <http://www.gnu.org/licenses/>.                              *
  *                                                                                                                  *
  ********************************************************************************************************************/
-#define UNUSED(x) (void)x;
 #include "GooglePushHandler.h"
 #include "../models/GooglePushModel.h"
 #include "../Settings.h"
@@ -37,7 +36,7 @@ void GooglePushHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
 }
 
 void GooglePushHandler::onUpgrade(proxygen::UpgradeProtocol prot) noexcept {
-    UNUSED(prot)
+    std::ignore = prot;
 }
 
 void GooglePushHandler::onEOM() noexcept {
@@ -74,5 +73,5 @@ void GooglePushHandler::requestComplete() noexcept {
 }
 
 void GooglePushHandler::onError(ProxygenError err) noexcept {
-    UNUSED(err)
+    std::ignore = err;
 }

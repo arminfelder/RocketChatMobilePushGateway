@@ -28,7 +28,6 @@ public:
 
     bool sendMessage();
 
-    [[deprecated("Replaced by environment variables(APNS_PRIVATE_KEY,APNS_TEAM_ID,APNS_KEY,APNS_APPID)")]]
     static void loadApiKey();
 
     static void initFromSettings();
