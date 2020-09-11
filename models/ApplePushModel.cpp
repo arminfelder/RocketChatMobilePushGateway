@@ -65,7 +65,6 @@ ApplePushModel::ApplePushModel(const std::string &pJson) {
 
             Json::Value options = obj["options"];
 
-            Json::Value apn = options["apn"];
             std::string test(fast.write(options));
             if (options.isMember("text")) {
                 std::string temp = options["text"].asString();
@@ -112,6 +111,7 @@ ApplePushModel::ApplePushModel(const std::string &pJson) {
 
 size_t ApplePushModel::curlWriteCallback(void *buffer, size_t size, size_t nmemb,
                                          void *this_ptr) {
+    std::ignore = size;
     auto thiz = static_cast<ApplePushModel *>(this_ptr);
     Json::Reader reader;
     Json::Value obj;
@@ -158,6 +158,12 @@ bool ApplePushModel::sendMessage() {
     boost::uuids::uuid uuidObj = boost::uuids::random_generator()();
     std::string uuidString = boost::lexical_cast<std::string>(uuidObj);
 
+    auto cleanedObj = obj;
+    cleanedObj["alert"] = "---removed from log---";
+    cleanedObj["ejson"] = "---removed from log---";
+    LOG(INFO) << uuidString << "\tApple push data\t" << cleanedObj;
+    LOG(INFO) << uuidString << "\tAPNS token:\t" << mDeviceToken;
+
     CURL *curl;
     CURLcode res;
 
@@ -167,22 +173,27 @@ bool ApplePushModel::sendMessage() {
 
         try {
 
-            jwt::jwt_object obj{jwt::params::algorithm("ES256"),
-                                jwt::params::headers({
-                                                             {"alg", "ES256"},
-                                                             {"kid", mKey}
-                                                     }),
-                                jwt::params::secret(mPem)
+            jwt::jwt_object jwtObj{
+                jwt::params::algorithm("ES256"),
+                jwt::params::headers({
+                    {
+                        "alg","ES256"
+                    },
+                    {
+                        "kid", mKey
+                    }
+                }),
+                jwt::params::secret(mPem)
             };
 
             auto n = system_clock::now();
             auto in_time_t = system_clock::to_time_t(n);
 
-            obj.add_claim("iss", mTeamId).add_claim("iat", in_time_t);
+            jwtObj.add_claim("iss", mTeamId).add_claim("iat", in_time_t);
 
-            std::string encoded_jwt = obj.signature();
+            std::string encoded_jwt = jwtObj.signature();
 
-            chunk = curl_slist_append(chunk, std::string("Authorization: Bearer " + obj.signature()).c_str());
+            chunk = curl_slist_append(chunk, std::string("Authorization: Bearer " + jwtObj.signature()).c_str());
             chunk = curl_slist_append(chunk, std::string("apns-id: " + uuidString).c_str());
             chunk = curl_slist_append(chunk, std::string("apns-expiration: 0").c_str());
             chunk = curl_slist_append(chunk, std::string("apns-priority: 10").c_str());
@@ -215,14 +226,14 @@ bool ApplePushModel::sendMessage() {
                     mReturnStatusCode = 500;
                 }
             } else {
-                LOG(INFO) << uuidString << "\tApple push conn status: OK";
+                DLOG(INFO) << uuidString << "\tApple push conn status: OK";
                 curl_easy_cleanup(curl);
                 curl_slist_free_all(chunk);
                 mReturnStatusCode = 200;
                 return true;
             }
         } catch (std::exception &e) {
-            LOG(INFO) << e.what();
+            LOG(ERROR) << e.what();
             curl_easy_cleanup(curl);
             curl_slist_free_all(chunk);
             mReturnStatusCode = 500;

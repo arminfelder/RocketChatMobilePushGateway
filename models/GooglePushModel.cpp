@@ -18,8 +18,6 @@
  *                                                                                                                  *
  ********************************************************************************************************************/
 
-#define UNUSED(x) (void)x;
-
 #include <curl/curl.h>
 #include <fstream>
 #include <iostream>
@@ -123,7 +121,7 @@ int GooglePushModel::trace(CURL *handle, curl_infotype type,
                                   char *data, size_t size,
                                   void *userp){
 
-    UNUSED(size)
+    std::ignore = size;
 
     const char *text;
     (void)handle; /* prevent compiler warning */
@@ -163,6 +161,7 @@ int GooglePushModel::trace(CURL *handle, curl_infotype type,
 size_t GooglePushModel::curlWriteCallback(void *buffer, size_t size, size_t nmemb,
                         void* this_ptr)
 {
+    std::ignore = size;
     auto thiz= static_cast<GooglePushModel*>(this_ptr);
     Json::Reader reader;
     Json::Value obj;
@@ -214,7 +213,11 @@ bool GooglePushModel::sendMessage() {
     boost::uuids::uuid uuidObj = boost::uuids::random_generator()();
     std::string uuidString = boost::lexical_cast<std::string>(uuidObj);
 
-    LOG(INFO) << uuidString << "\tGoogle push data\t" << data;
+
+    auto cleanedObj = obj;
+    cleanedObj["data"] = "---removed from log---";
+    LOG(INFO) << uuidString << "\tGoogle push data\t" << cleanedObj;
+
 
     curl = curl_easy_init();
     if (curl) {
@@ -247,7 +250,7 @@ bool GooglePushModel::sendMessage() {
                 mReturnStatusCode = 500;
             }
         } else {
-            LOG(INFO) << uuidString << "\tGoogle push conn status: OK";
+            DLOG(ERROR) << uuidString << "\tGoogle push conn status: OK";
             curl_easy_cleanup(curl);
             curl_slist_free_all(chunk);
             mReturnStatusCode = 200;

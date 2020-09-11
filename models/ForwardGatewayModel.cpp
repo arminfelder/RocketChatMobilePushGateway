@@ -30,7 +30,7 @@ void ForwardGatewayModel::unClaimRegistrationId(const std::string &pRegistration
 }
 
 size_t ForwardGatewayModel::curlWriteCallback(void *buffer, size_t size, size_t nmemb, void *this_ptr) {
-
+    std::ignore = size;
     auto thiz = static_cast<ForwardGatewayModel *>(this_ptr);
     Json::Reader reader;
     Json::Value obj;

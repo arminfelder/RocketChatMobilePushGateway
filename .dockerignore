@@ -3,3 +3,6 @@
 .idea
 cmake-build-debug
 cmake-build-release
+Dockerfile
+docker-buildenv
+cmake*
