@@ -52,7 +52,7 @@ void Settings::init() {
 
     auto apnsAppId = std::getenv("APNS_APPID");
     if(apnsAppId){
-        mApnsPrivateKey = std::string(apnsAppId);
+        mApnsAppId = std::string(apnsAppId);
     }
 }
 
