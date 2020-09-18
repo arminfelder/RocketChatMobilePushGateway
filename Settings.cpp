@@ -103,6 +103,7 @@ void Settings::loadApnKeyFile() {
     std::string content((std::istreambuf_iterator<char>(ifsPem)), 
                         (std::istreambuf_iterator<char>()));
     if (content.length()) {
+        LOG(INFO) << "Settings: Using APN key file";
         mApnsPrivateKey = content;
     } else {
         LOG(INFO) << "Settings: No APN key file found at /certs/apple/key.pem";
@@ -114,6 +115,7 @@ void Settings::loadApnSettingsFile() {
     std::string content((std::istreambuf_iterator<char>(ifsSettings)), 
                         (std::istreambuf_iterator<char>()));
     if(content.length()) {
+        LOG(INFO) << "Settings: Using APN settings file";
         Json::Reader reader;
         Json::Value obj;
         reader.parse(content, obj);
@@ -140,9 +142,10 @@ void Settings::loadFcmServerKeyFile() {
     std::string content((std::istreambuf_iterator<char>(ifs)),
                         (std::istreambuf_iterator<char>()));
     if (content.length()) {
+        LOG(INFO) << "Settings: Using FCM Server Key file";
         std::regex newLine("([\\n]+)");
         mFcmServerKey = std::regex_replace(content,newLine,"");
     } else {
-        LOG(INFO) << "Settings: No Google Push Key file found at /certs/google/serverKey.txt";
+        LOG(INFO) << "Settings: No FCM Server Key file file found at /certs/google/serverKey.txt";
     }
 }
