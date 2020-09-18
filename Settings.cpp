@@ -18,6 +18,7 @@ std::string Settings::mApnsPrivateKey;
 std::string Settings::mApnsTeamId;
 std::string Settings::mApnsKey;
 std::string Settings::mApnsAppId;
+std::string Settings::mApnsPrivateKeyAlgo = "ES256";
 
 void Settings::init() {
     std::regex newLine("([\\n]+)");
@@ -68,6 +69,12 @@ void Settings::init() {
         mApnsAppId = std::string(apnsAppId);
         LOG(INFO) << "Settings: Using APNs AppID from env";
     }
+
+    auto apnsPrivateKeyAlgo = std::getenv("APNS_PRIVATE_KEY_ALGO");
+    if(apnsPrivateKeyAlgo){
+        mApnsPrivateKeyAlgo = std::string(apnsPrivateKeyAlgo);
+        LOG(INFO) << "Settings: Using APNs Private Key Algo from env";
+    }
 }
 
 bool Settings::forwardGatewayEnabled() {
@@ -96,6 +103,10 @@ const std::string &Settings::apnsAppId() {
 
 const std::string &Settings::apnsKey() {
     return mApnsKey;
+}
+
+const std::string &Settings::apnsPrivateKeyAlgo() {
+    return mApnsPrivateKeyAlgo;
 }
 
 void Settings::loadApnKeyFile() {

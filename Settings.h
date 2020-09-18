@@ -18,6 +18,7 @@ public:
     static const std::string &apnsTeamId();
     static const std::string &apnsAppId();
     static const std::string &apnsKey();
+    static const std::string &apnsPrivateKeyAlgo();
 
 private:
     static void loadApnKeyFile();
@@ -30,6 +31,7 @@ private:
     static std::string mApnsTeamId;
     static std::string mApnsKey;
     static std::string mApnsAppId;
+    static std::string mApnsPrivateKeyAlgo;
 };
 
 

@@ -50,6 +50,7 @@ std::string ApplePushModel::mPem;
 std::string ApplePushModel::mTeamId;
 std::string ApplePushModel::mAppId;
 std::string ApplePushModel::mKey;
+std::string ApplePushModel::mPrivateKeyAlgo;
 
 ApplePushModel::ApplePushModel(const std::string &pJson) {
 
@@ -174,10 +175,10 @@ bool ApplePushModel::sendMessage() {
         try {
 
             jwt::jwt_object jwtObj{
-                jwt::params::algorithm("ES256"),
+                jwt::params::algorithm(mPrivateKeyAlgo),
                 jwt::params::headers({
                     {
-                        "alg","ES256"
+                        "alg", mPrivateKeyAlgo
                     },
                     {
                         "kid", mKey
@@ -252,6 +253,7 @@ void ApplePushModel::init() {
     mPem = Settings::apnsPrivateKey();
     mTeamId = Settings::apnsTeamId();
     mKey = Settings::apnsKey();
+    mPrivateKeyAlgo = Settings::apnsPrivateKeyAlgo();
 }
 
 int ApplePushModel::returnStatusCode() const {
