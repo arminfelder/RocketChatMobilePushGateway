@@ -48,19 +48,6 @@
 
 std::string GooglePushModel::mApiKey;
 
-void GooglePushModel::loadApiKey() {
-    std::ifstream ifs("/certs/google/serverKey.txt");
-    std::string content((std::istreambuf_iterator<char>(ifs)),
-                        (std::istreambuf_iterator<char>()));
-    if (content.length()) {
-        std::regex newLine("([\\n]+)");
-        GooglePushModel::mApiKey = std::regex_replace(content,newLine,"");
-    } else {
-        LOG(ERROR) << "Error loading Google Push Key: file: /certs/google/serverKey.txt is empty or does not exist";
-        exit(EXIT_FAILURE);
-    }
-}
-
 GooglePushModel::GooglePushModel(const std::string &pJson) {
     Json::Reader reader;
     Json::Value obj;
@@ -265,9 +252,8 @@ bool GooglePushModel::sendMessage() {
     return false;
 }
 
-void GooglePushModel::initFromSettings() {
+void GooglePushModel::init() {
     mApiKey = Settings::fcmServerKey();
-
 }
 
 int GooglePushModel::returnStatusCode() const {

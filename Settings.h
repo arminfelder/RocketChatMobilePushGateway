@@ -20,6 +20,9 @@ public:
     static const std::string &apnsKey();
 
 private:
+    static void loadApnKeyFile();
+    static void loadApnSettingsFile();
+    static void loadFcmServerKeyFile();
     static bool mForwardGatewayEnabled;
     static std::string mForwardGatewayUrl;
     static std::string mFcmServerKey;
