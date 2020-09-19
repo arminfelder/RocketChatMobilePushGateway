@@ -50,6 +50,7 @@ std::string ApplePushModel::mPem;
 std::string ApplePushModel::mTeamId;
 std::string ApplePushModel::mAppId;
 std::string ApplePushModel::mKey;
+std::string ApplePushModel::mPrivateKeyAlgo;
 
 ApplePushModel::ApplePushModel(const std::string &pJson) {
 
@@ -174,10 +175,10 @@ bool ApplePushModel::sendMessage() {
         try {
 
             jwt::jwt_object jwtObj{
-                jwt::params::algorithm("ES256"),
+                jwt::params::algorithm(mPrivateKeyAlgo),
                 jwt::params::headers({
                     {
-                        "alg","ES256"
+                        "alg", mPrivateKeyAlgo
                     },
                     {
                         "kid", mKey
@@ -247,41 +248,12 @@ bool ApplePushModel::sendMessage() {
     return false;
 }
 
-void ApplePushModel::loadApiKey() {
-    std::ifstream ifsPem("/certs/apple/key.pem");
-    std::ifstream ifsSettings("/certs/apple/settings.json");
-    std::string pemContent((std::istreambuf_iterator<char>(ifsPem)), (std::istreambuf_iterator<char>()));
-    std::string settingsContent((std::istreambuf_iterator<char>(ifsSettings)), (std::istreambuf_iterator<char>()));
-    if (pemContent.length() && settingsContent.length()) {
-        mPem = pemContent;
-        Json::Reader reader;
-        Json::Value obj;
-        reader.parse(settingsContent, obj);
-        if (obj.isMember("appId") && obj.isMember("teamId") && obj.isMember("key")) {
-            std::string appId = obj["appId"].asString();
-            std::string teamId = obj["teamId"].asString();
-            std::string key = obj["key"].asString();
-            if (appId.length() && teamId.length() && key.length()) {
-                mAppId = std::move(appId);
-                mTeamId = std::move(teamId);
-                mKey = std::move(key);
-            } else {
-                LOG(ERROR) << "Error JSON data invalid";
-                exit(EXIT_FAILURE);
-            }
-        }
-
-    } else {
-        LOG(ERROR) << "Error loading APNS credentials, check if the settings.json, and key.pem exists";
-        exit(EXIT_FAILURE);
-    }
-}
-
-void ApplePushModel::initFromSettings() {
+void ApplePushModel::init() {
     mAppId = Settings::apnsAppId();
     mPem = Settings::apnsPrivateKey();
     mTeamId = Settings::apnsTeamId();
     mKey = Settings::apnsKey();
+    mPrivateKeyAlgo = Settings::apnsPrivateKeyAlgo();
 }
 
 int ApplePushModel::returnStatusCode() const {

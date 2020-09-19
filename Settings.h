@@ -18,8 +18,12 @@ public:
     static const std::string &apnsTeamId();
     static const std::string &apnsAppId();
     static const std::string &apnsKey();
+    static const std::string &apnsPrivateKeyAlgo();
 
 private:
+    static void loadApnKeyFile();
+    static void loadApnSettingsFile();
+    static void loadFcmServerKeyFile();
     static bool mForwardGatewayEnabled;
     static std::string mForwardGatewayUrl;
     static std::string mFcmServerKey;
@@ -27,6 +31,7 @@ private:
     static std::string mApnsTeamId;
     static std::string mApnsKey;
     static std::string mApnsAppId;
+    static std::string mApnsPrivateKeyAlgo;
 };
 
 

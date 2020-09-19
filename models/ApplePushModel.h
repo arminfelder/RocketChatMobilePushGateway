@@ -28,9 +28,7 @@ public:
 
     bool sendMessage();
 
-    static void loadApiKey();
-
-    static void initFromSettings();
+    static void init();
 
     static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
                                     void *this_ptr);
@@ -43,6 +41,7 @@ private:
     static std::string mTeamId;
     static std::string mAppId;
     static std::string mKey;
+    static std::string mPrivateKeyAlgo;
     std::string mTitle;
     std::string mText;
     std::string mDeviceToken;

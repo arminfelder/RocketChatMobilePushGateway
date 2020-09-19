@@ -55,16 +55,8 @@ int main(int argc, char* argv[]) {
     google::InstallFailureSignalHandler();
 
     Settings::init();
-
-    if(Settings::fcmServerKey().empty()&&Settings::apnsPrivateKey().empty()) {
-        GooglePushModel::loadApiKey();
-        ApplePushModel::loadApiKey();
-    }else{
-        GooglePushModel::initFromSettings();
-        ApplePushModel::initFromSettings();
-    }
-
-
+    GooglePushModel::init();
+    ApplePushModel::init();
 
     std::vector<HTTPServer::IPConfig> IPs = {
             {
