@@ -7,7 +7,7 @@ endif()
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -flto")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 set(wangle_DIR /opt/proxygen/proxygen/_build/deps/lib/cmake/wangle)
@@ -27,8 +27,6 @@ include_directories(/opt/proxygen/proxygen/_build/deps/include)
 include_directories(/opt/proxygen/proxygen/_build/include)
 include_directories(proxygen_INCLUDE_DIRS)
 
-link_directories(/usr/local/lib/proxygen)
-
 set(SOURCE_FILES
         main.cpp
         HandlerFactory.cpp
@@ -45,8 +43,6 @@ set(SOURCE_FILES
         libs/cpp-base64/base64.cpp
         )
 add_executable(rocketChatMobilePushGateway ${SOURCE_FILES})
-
-
 
 target_link_libraries(rocketChatMobilePushGateway
         -lglog
