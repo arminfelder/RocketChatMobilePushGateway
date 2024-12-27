@@ -1,4 +1,4 @@
-FROM afelder/proxygen:v2020.07.13.00-builder
+FROM afelder/proxygen:v2020.10.19.00-build
 
 LABEL maintainer="armin.felder@osalliance.com"
 

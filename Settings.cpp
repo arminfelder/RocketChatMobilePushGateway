@@ -6,14 +6,17 @@
 #include <string>
 #include <regex>
 #include <proxygen/lib/utils/UtilInl.h>
-#include "Settings.h"
 #include <jsoncpp/json/json.h>
 #include <fstream>
 #include <glog/logging.h>
 
+#include "Settings.h"
+
 std::string Settings::mForwardGatewayUrl;
 bool Settings::mForwardGatewayEnabled = false;
-std::string Settings::mFcmServerKey;
+Settings::GoogleServiceAccount Settings::mFcmServiceAccount;
+std::string Settings::mFcmProjectId;
+std::string Settings::mFcmApiEndpoint;
 std::string Settings::mApnsPrivateKey;
 std::string Settings::mApnsTeamId;
 std::string Settings::mApnsKey;
@@ -21,11 +24,11 @@ std::string Settings::mApnsAppId;
 std::string Settings::mApnsPrivateKeyAlgo = "ES256";
 
 void Settings::init() {
-    std::regex newLine("([\\n]+)");
+    const std::regex newLine("([\\n]+)");
 
     loadApnKeyFile();
     loadApnSettingsFile();
-    loadFcmServerKeyFile();
+    loadFcmServiceAccountJson();
 
     auto enableForwardGateway = std::getenv("FORWARD_GATEWAY_ENABLE");
     if(enableForwardGateway && std::string(enableForwardGateway) == "TRUE"){
@@ -40,10 +43,10 @@ void Settings::init() {
         LOG(INFO) << "Settings: Using default Forward Gateway";
     }
 
-    auto fcmServerKey = std::getenv("FCM_SERVER_KEY");
-    if(fcmServerKey){
-        mFcmServerKey = std::regex_replace(std::string(fcmServerKey),newLine,"");
-        LOG(INFO) << "Settings: Using FCM Server Key from env";
+    auto fcmServiceAccountJson = std::getenv("FCM_SERVICE_ACCOUNT_JSON");
+    if(fcmServiceAccountJson){
+        setGoogleCredentialsFromServicAccountJson(std::string(fcmServiceAccountJson));
+        LOG(INFO) << "Settings: Using FCM ServiceAssount from env";
     }
 
     auto apnsPrivateKey = std::getenv("APNS_PRIVATE_KEY");
@@ -75,6 +78,45 @@ void Settings::init() {
         mApnsPrivateKeyAlgo = std::string(apnsPrivateKeyAlgo);
         LOG(INFO) << "Settings: Using APNs Private Key Algo from env";
     }
+
+    mFcmApiEndpoint = "https://fcm.googleapis.com/v1/projects/" + mFcmServiceAccount.project_id + "/messages:send";
+}
+
+bool Settings::setGoogleCredentialsFromServicAccountJson(const std::string& pServiceAccountJson)
+{
+    Json::Reader reader;
+    Json::Value obj;
+    reader.parse(pServiceAccountJson, obj);
+    if (obj.isMember("type") && obj.isMember("project_id") && obj.isMember("private_key_id") && obj.isMember("private_key") && obj.isMember("client_email") && obj.isMember("client_id") && obj.isMember("auth_uri") && obj.isMember("token_uri") && obj.isMember("auth_provider_x509_cert_url") && obj.isMember("client_x509_cert_url") && obj.isMember("universe_domain")) {
+        std::string type = obj["type"].asString();
+        std::string projectId = obj["project_id"].asString();
+        std::string privateKeyId = obj["private_key_id"].asString();
+        std::string privateKey = obj["private_key"].asString();
+        std::string clientEmail = obj["client_email"].asString();
+        std::string clientId = obj["client_id"].asString();
+        std::string authUri = obj["auth_uri"].asString();
+        std::string tokenUri = obj["token_uri"].asString();
+        std::string authProviderX509CertUrl = obj["auth_provider_x509_cert_url"].asString();
+        std::string clientX509CertUrl = obj["client_x509_cert_url"].asString();
+        std::string universeDomain = obj["universe_domain"].asString();
+        if (type.length() && projectId.length() && privateKeyId.length() && privateKey.length() && clientEmail.length() && clientId.length() && authUri.length() && tokenUri.length() && authProviderX509CertUrl.length() && clientX509CertUrl.length()) {
+            mFcmServiceAccount.project_id = std::move(projectId);
+            mFcmServiceAccount.type = std::move(type);
+            mFcmServiceAccount.private_key_id = std::move(privateKeyId);
+            mFcmServiceAccount.private_key = std::move(privateKey);
+            mFcmServiceAccount.client_email = std::move(clientEmail);
+            mFcmServiceAccount.client_id = std::move(clientId);
+            mFcmServiceAccount.auth_uri = std::move(authUri);
+            mFcmServiceAccount.token_uri = std::move(tokenUri);
+            mFcmServiceAccount.auth_provider_x509_cert_url = std::move(authProviderX509CertUrl);
+            mFcmServiceAccount.client_x509_cert_url = std::move(clientX509CertUrl);
+            mFcmServiceAccount.universe_domain = std::move(universeDomain);
+            return true;
+        }
+        LOG(ERROR) << "failed to parse ServiceAccount JSON, keys missing";
+    }
+
+    return false;
 }
 
 bool Settings::forwardGatewayEnabled() {
@@ -85,8 +127,18 @@ const std::string &Settings::forwardGatewayUrl() {
     return mForwardGatewayUrl;
 }
 
-const std::string &Settings::fcmServerKey() {
-    return mFcmServerKey;
+const Settings::GoogleServiceAccount& Settings::fcmServiceAccount()
+{
+    return mFcmServiceAccount;
+}
+
+const std::string& Settings::fcmProjectId() {
+    return mFcmProjectId;
+}
+
+const std::string& Settings::fcmApiEndpoint()
+{
+    return mFcmApiEndpoint;
 }
 
 const std::string &Settings::apnsPrivateKey() {
@@ -148,15 +200,18 @@ void Settings::loadApnSettingsFile() {
     }
 }
 
-void Settings::loadFcmServerKeyFile() {
-    std::ifstream ifs("/certs/google/serverKey.txt");
+void Settings::loadFcmServiceAccountJson() {
+    std::ifstream ifs("/certs/google/serviceAccount.json");
     std::string content((std::istreambuf_iterator<char>(ifs)),
                         (std::istreambuf_iterator<char>()));
     if (content.length()) {
-        LOG(INFO) << "Settings: Using FCM Server Key file";
-        std::regex newLine("([\\n]+)");
-        mFcmServerKey = std::regex_replace(content,newLine,"");
+        LOG(INFO) << "Settings: Using FCM ServiceAccount JSON";
+        if (!setGoogleCredentialsFromServicAccountJson(content))
+        {
+            LOG(ERROR) << "failed to parse ServiceAccount JSON";
+        }
+
     } else {
-        LOG(INFO) << "Settings: No FCM Server Key file file found at /certs/google/serverKey.txt";
+        LOG(INFO) << "Settings: No FCM ServiceAccount JSON file found at /certs/google/serviceAccount.json";
     }
 }

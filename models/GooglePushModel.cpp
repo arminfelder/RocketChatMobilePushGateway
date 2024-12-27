@@ -42,25 +42,26 @@
 #include <proxygen/lib/http/codec/HTTP2Codec.h>
 
 #include "GooglePushModel.h"
+
 #include "../date.h"
 #include "ForwardGatewayModel.h"
 #include "../Settings.h"
 
-std::string GooglePushModel::mApiKey;
+GooglePushModel::Token GooglePushModel::mAccessToken;
+std::mutex GooglePushModel::mTokenMutex;
 
 GooglePushModel::GooglePushModel(const std::string &pJson) {
-    Json::Reader reader;
-    Json::Value obj;
-    Json::FastWriter fast;
-
-    if (pJson.length()) {
+    if (!pJson.empty()) {
+        Json::Value obj;
+        Json::Reader reader;
         reader.parse(pJson, obj);
 
         if (obj.isMember("token") && obj.isMember("options")) {
+            Json::FastWriter fast;
 
-            Json::Value options = obj["options"];
+            const Json::Value& options = obj["options"];
 
-            Json::Value apn = options["gcm"];
+            const Json::Value& apn = options["gcm"];
             std::string test(fast.write(options));
             if (apn.isMember("text")) {
                 std::string temp = apn["text"].asString();
@@ -145,15 +146,15 @@ int GooglePushModel::trace(CURL *handle, curl_infotype type,
     return 0;
 }
 
-size_t GooglePushModel::curlWriteCallback(void *buffer, size_t size, size_t nmemb,
+size_t GooglePushModel::curlFcmWriteCallback(void *buffer, size_t size, size_t nmemb,
                         void* this_ptr)
 {
     std::ignore = size;
-    auto thiz= static_cast<GooglePushModel*>(this_ptr);
-    Json::Reader reader;
-    Json::Value obj;
+    const auto thiz= static_cast<GooglePushModel*>(this_ptr);
     if(buffer != nullptr) {
-        std::string bufferString(static_cast<char*>(buffer),nmemb);
+        Json::Value obj;
+        Json::Reader reader;
+        const std::string bufferString(static_cast<char*>(buffer),nmemb);
         reader.parse(bufferString, obj);
         if (obj.isMember("failure") && obj.isMember("success") && obj.isMember("results") && obj["failure"].asBool()) {
             auto results = obj["results"];
@@ -175,61 +176,73 @@ bool GooglePushModel::sendMessage() {
         return false;
     }
 
-    Json::Value obj;
-    Json::Value msg;
-    msg["title"] = mTitle;
-    msg["body"] = mText;
-    msg["message"] = mText;
-    msg["ejson"] = mPayload;
-    msg["msgcnt"] = mBadge;
+    Json::Value root, messageData, notificationData, androidData, androidNotification;
 
-    obj["to"] = mDeviceToken;
-    obj["data"] = msg;
-    obj["priority"] = 10;
-    obj["collapseKey"] = mFrom;
+    // Construct message data
+    messageData["title"] = mTitle;
+    messageData["body"] = mText;
+    messageData["message"] = mText;
+    messageData["ejson"] = mPayload;
 
-    Json::FastWriter fast;
+    // Construct notification data
+    notificationData["title"] = mTitle;
+    notificationData["body"] = mText;
 
-    std::string data = fast.write(obj);
+    // Construct Android-specific notification data
+    androidNotification["notification_count"] = mBadge;
+    androidNotification["sound"] = mSound;
 
-    CURL *curl;
-    CURLcode res;
+    androidData["collapseKey"] = mFrom;
+    androidData["priority"] = 10;
+    androidData["notification"] = androidNotification;
+
+    // Combine all data into the final object
+    root["notification"] = notificationData;
+    root["data"] = messageData;
+    root["token"] = mDeviceToken;
+    root["android"] = androidData;
+
+    Json::Value finalMessage;
+    finalMessage["message"] = root;
+
+    Json::FastWriter fastWriter;
+    const std::string serializedMessage = fastWriter.write(finalMessage);
 
     using namespace date;
     using namespace std::chrono;
-    boost::uuids::uuid uuidObj = boost::uuids::random_generator()();
-    std::string uuidString = boost::lexical_cast<std::string>(uuidObj);
+    const auto uuidObj = boost::uuids::random_generator()();
+    const auto uuidString = boost::lexical_cast<std::string>(uuidObj);
 
 
-    auto cleanedObj = obj;
+    auto cleanedObj = finalMessage;
     cleanedObj["data"] = "---removed from log---";
     LOG(INFO) << uuidString << "\tGoogle push data\t" << cleanedObj;
 
 
-    curl = curl_easy_init();
+    std::shared_ptr<CURL> curl(curl_easy_init(),curl_easy_cleanup);
     if (curl) {
 
-        struct curl_slist *chunk = nullptr;
+        auto chunk = curl_slist_append(nullptr, std::string("Authorization: Bearer " + getAccessToken()).c_str());
+        chunk = curl_slist_append(chunk, "Content-Type: application/json; UTF-8");
 
-        chunk = curl_slist_append(chunk, std::string("Authorization: key="+mApiKey).c_str());
-        chunk = curl_slist_append(chunk, "Content-Type: application/json");
+        curl_easy_setopt(curl.get(), CURLOPT_DEBUGFUNCTION, trace );
+        curl_easy_setopt(curl.get(), CURLOPT_VERBOSE, false);
+        curl_easy_setopt(curl.get(), CURLOPT_URL,Settings::fcmApiEndpoint().c_str());
+        curl_easy_setopt(curl.get(), CURLOPT_POSTFIELDS, serializedMessage.c_str());
+        curl_easy_setopt(curl.get(), CURLOPT_POSTFIELDSIZE,serializedMessage.size());
+        curl_easy_setopt(curl.get(), CURLOPT_POST, true);
+        curl_easy_setopt(curl.get(), CURLOPT_HTTPHEADER, chunk);
+        curl_easy_setopt(curl.get(), CURLOPT_USE_SSL, true);
+        curl_easy_setopt(curl.get(), CURLOPT_SSL_VERIFYPEER, false);
+        curl_easy_setopt(curl.get(), CURLOPT_TCP_KEEPALIVE, true);
+        curl_easy_setopt(curl.get(), CURLOPT_WRITEFUNCTION, curlFcmWriteCallback );
+        curl_easy_setopt(curl.get(), CURLOPT_WRITEDATA, this);
 
-        curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, trace );
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, false);
-        curl_easy_setopt(curl, CURLOPT_URL,mApiUrl.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE,data.size());
-        curl_easy_setopt(curl, CURLOPT_POST, true);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
-        curl_easy_setopt(curl, CURLOPT_USE_SSL, true);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false);
-        curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, true);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteCallback );
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
+        const CURLcode res = curl_easy_perform(curl.get());
+        long http_code;
+        curl_easy_getinfo(curl.get(), CURLINFO_RESPONSE_CODE, &http_code);
 
-        res = curl_easy_perform(curl);
-
-        if (res != CURLE_OK) {
+        if (http_code < 200 || http_code >= 300) {
             if(res == CURLE_WRITE_ERROR){
                 LOG(INFO) << uuidString << "\tGoogle push device token rejected, forward message to forwardgateway";
             }else{
@@ -238,12 +251,10 @@ bool GooglePushModel::sendMessage() {
             }
         } else {
             DLOG(ERROR) << uuidString << "\tGoogle push conn status: OK";
-            curl_easy_cleanup(curl);
             curl_slist_free_all(chunk);
             mReturnStatusCode = 200;
             return true;
         }
-        curl_easy_cleanup(curl);
         curl_slist_free_all(chunk);
 
     }else{
@@ -253,9 +264,129 @@ bool GooglePushModel::sendMessage() {
 }
 
 void GooglePushModel::init() {
-    mApiKey = Settings::fcmServerKey();
+
 }
 
 int GooglePushModel::returnStatusCode() const {
     return mReturnStatusCode;
+}
+
+const std::string& GooglePushModel::getAccessToken()
+{
+    const auto now = std::chrono::system_clock::now();
+    const bool isTokenExpired = (now >= mAccessToken.expires_in);
+
+    if (isTokenExpired)
+    {
+        std::lock_guard<std::mutex> lock(mTokenMutex);
+
+        if (now >= mAccessToken.expires_in)
+        {
+            requestAccessToken();
+        }
+    }
+
+    return mAccessToken.token;
+}
+
+std::string getGoogleAuthJWT()
+{
+    auto now = std::chrono::system_clock::now();
+    auto now_timestamp = std::chrono::duration_cast<std::chrono::seconds>(
+        now.time_since_epoch()
+    ).count();
+
+    auto expiry = now + std::chrono::hours(1);
+    auto expiry_timestamp = std::chrono::duration_cast<std::chrono::seconds>(
+    expiry.time_since_epoch()
+).count();
+
+
+    auto test =std::chrono::system_clock::now() + std::chrono::seconds(3600);
+    jwt::jwt_object jwtObj{
+        jwt::params::algorithm("RS256"),
+        jwt::params::headers({
+            {
+                "alg", "RS256"
+            },
+            {
+                "kid", Settings::fcmServiceAccount().private_key_id
+            }
+        }),
+        jwt::params::secret(Settings::fcmServiceAccount().private_key),
+    };
+
+    jwtObj.add_claim("iss", Settings::fcmServiceAccount().client_email);
+    jwtObj.add_claim("scope", "https://www.googleapis.com/auth/firebase.messaging");
+    jwtObj.add_claim("aud", Settings::fcmServiceAccount().token_uri);
+    jwtObj.add_claim("exp", expiry_timestamp);
+    jwtObj.add_claim("iat", now_timestamp);
+
+    auto signedJwt = jwtObj.signature();
+
+    return signedJwt;
+}
+
+bool GooglePushModel::requestAccessToken()
+{
+    const auto token = getGoogleAuthJWT();
+
+    const std::shared_ptr<CURL> curl(curl_easy_init(),curl_easy_cleanup);
+    if (curl) {
+        curl_slist *chunk = nullptr;
+
+
+        std::string buffer;
+        std::string postfields = "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion="+token;
+        curl_easy_setopt(curl.get(), CURLOPT_DEBUGFUNCTION, trace );
+        curl_easy_setopt(curl.get(), CURLOPT_VERBOSE, false);
+        curl_easy_setopt(curl.get(), CURLOPT_URL,Settings::fcmServiceAccount().token_uri.c_str());
+        curl_easy_setopt(curl.get(), CURLOPT_POST, true);
+        curl_easy_setopt(curl.get(), CURLOPT_POSTFIELDS, postfields.c_str());
+        curl_easy_setopt(curl.get(), CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(postfields.size()));
+        curl_easy_setopt(curl.get(), CURLOPT_USE_SSL, true);
+        curl_easy_setopt(curl.get(), CURLOPT_SSL_VERIFYPEER, false);
+        curl_easy_setopt(curl.get(), CURLOPT_TCP_KEEPALIVE, true);
+        curl_easy_setopt(curl.get(), CURLOPT_WRITEDATA, &buffer );
+        curl_easy_setopt(curl.get(), CURLOPT_WRITEFUNCTION,  +[](char *buffer, size_t size, size_t nmemb, void *userdata) {
+                    // invoke the member function via userdata
+                    const auto responseBuffer = static_cast<std::string*>(userdata);
+                    responseBuffer->append(buffer,size * nmemb);
+            return nmemb;
+                 });
+
+
+        CURLcode res = curl_easy_perform(curl.get());
+        long http_code;
+        curl_easy_getinfo(curl.get(), CURLINFO_RESPONSE_CODE, &http_code);
+
+        if (http_code < 200 || http_code >= 300){
+                LOG(INFO) << "\tGoogle push auth rejected";
+        } else {
+            if(!buffer.empty()) {
+                Json::Reader reader;
+                Json::Value obj;
+                reader.parse(buffer, obj);
+
+                if ( obj.isMember("access_token") && obj.isMember("expires_in") )
+                {
+                    mAccessToken.token = obj["access_token"].asString();
+                    auto now = std::chrono::system_clock::now();
+
+                    auto expiry = now + std::chrono::seconds(obj["expires_in"].asInt()) - std::chrono::seconds(10);
+                    mAccessToken.expires_in = expiry;
+                }
+            }
+
+            curl_slist_free_all(chunk);
+            mReturnStatusCode = 200;
+            return true;
+        }
+        curl_slist_free_all(chunk);
+
+    }else{
+        DLOG(ERROR) << "\tFailed to initialize CURL";
+    }
+    return false;
+
 }
