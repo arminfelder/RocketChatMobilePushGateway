@@ -24,11 +24,18 @@
 #include <string>
 #include <jsoncpp/json/json.h>
 #include <curl/curl.h>
+#include <jwt/jwt.hpp>
 
 #include <proxygen/lib/http/HTTPMessage.h>
 
 
 class GooglePushModel {
+
+    typedef struct
+    {
+        std::string token;
+        std::chrono::time_point<std::chrono::system_clock> expires_in;
+    } Token;
 
 public:
     explicit GooglePushModel(const std::string &pJson);
@@ -41,15 +48,18 @@ public:
 
     static void init();
 
-    static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
+    static size_t curlFcmWriteCallback(void *buffer, size_t size, size_t nmemb,
                                     void *this_ptr);
 
     int returnStatusCode() const;
 
-private:
-    static std::string mApiKey;
+    const std::string &getAccessToken();
 
-    const std::string mApiUrl{"https://fcm.googleapis.com/fcm/send"};
+    bool requestAccessToken();
+
+private:
+    static Token mAccessToken;
+    static std::mutex mTokenMutex;
 
     std::string mTitle;
     std::string mText;

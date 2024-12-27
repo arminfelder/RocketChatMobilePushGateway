@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.10)
 project(RocketChatMobilePushGateway)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -19,6 +19,8 @@ set(proxygen_DIR /opt/proxygen/proxygen/_build/lib/cmake/proxygen)
 find_package(Boost COMPONENTS system filesystem context thread program_options regex iostreams REQUIRED)
 find_package(proxygen CONFIG REQUIRED)
 find_package(gflags COMPONENTS shared)
+
+add_subdirectory(libs/cpp-jwt)
 
 include_directories(/usr/local/include/r3)
 include_directories(libs/cpp-jwt/include)
