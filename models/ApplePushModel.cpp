@@ -106,6 +106,7 @@ std::string ApplePushModel::getPayload( const uuid_t &uuid) const
     aps["alert"] = alert;
 
     obj["aps"] = aps;
+    obj["ejson"] = mPayload;
 
     std::string payload = fast.write(obj);
 
