@@ -1,6 +1,5 @@
 # Stage 1: Build Stage
 FROM debian:12 as build_stage
-LABEL maintainer="armin.felder@osalliance.com"
 
 # Use noninteractive environment for apt
 ENV DEBIAN_FRONTEND=noninteractive
@@ -43,6 +42,17 @@ RUN mkdir build && cd build && cmake .. && make -j$(nproc) \
 
 # Stage 2: Runtime Stage
 FROM debian:12-slim
+
+ARG VERSION=latest
+
+LABEL org.opencontainers.image.authors="armin.felder@osalliance.com" \
+      org.opencontainers.image.url="https://hub.docker.com/r/afelder/mobilepushgatewayforrocketchat/tags/${VERSION}" \
+      org.opencontainers.image.documentation="https://raw.githubusercontent.com/arminfelder/RocketChatMobilePushGateway/refs/heads/v${VERSION}/README.md" \
+      org.opencontainers.image.source="https://github.com/arminfelder/RocketChatMobilePushGateway.git" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.licenses="GPL-3.0+" \
+      org.opencontainers.image.vendor="Armin Felder"
+
 
 # Create non-root user for execution
 RUN useradd --no-log-init -g 0 -u 1001 pushgateway
