@@ -148,7 +148,7 @@ bool ApplePushModel::sendMessage()
                                         {"apns-id", std::string(reinterpret_cast<char*>(uuid))},
                                         {"apns-expiration", "0"},
                                         {"apns-priority", "10"},
-                                        {"apns-topic", mTopic},
+                                        {"apns-topic", mAppId},
                                         {"apns-push-type", "alert"},
                                         {"apns-collapse-id", mFrom}
                                     },
