@@ -21,17 +21,21 @@
 #ifndef ROCKETCHATMOBILEPUSHGATEWAY_APPLEPUSHMODEL_H
 #define ROCKETCHATMOBILEPUSHGATEWAY_APPLEPUSHMODEL_H
 
+#include <string>
+#include <uuid/uuid.h>
+#include <jsoncpp/json/json.h>
+#include <memory>
+
 class ApplePushModel {
 
 public:
-    explicit ApplePushModel(const std::string &pJson);
+    explicit ApplePushModel(const std::shared_ptr<Json::Value>& pJson);
+    [[nodiscard]] std::string getPayload(const uuid_t& uuid) const;
 
     bool sendMessage();
 
     static void init();
 
-    static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
-                                    void *this_ptr);
     int returnStatusCode() const;
 
 private:

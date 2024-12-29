@@ -1,40 +1,74 @@
-FROM afelder/proxygen:v2020.09.28.00-builder as builder
-
+# Stage 1: Build Stage
+FROM debian:12 as build_stage
 LABEL maintainer="armin.felder@osalliance.com"
 
-RUN apt-get update \
- && apt-get --no-install-recommends -y install libjsoncpp-dev libcurl4-openssl-dev libboost-all-dev cmake build-essential \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+# Use noninteractive environment for apt
+ENV DEBIAN_FRONTEND=noninteractive
 
-COPY . /pushGateway/RocketChatMobilePushGateway 
+# Define build dependencies
+ARG BUILD_DEPS="\
+    libjsoncpp-dev \
+    cmake \
+    build-essential \
+    git \
+    zlib1g-dev \
+    openssl \
+    libssl-dev \
+    uuid-dev \
+    libc-ares-dev \
+    libossp-uuid-dev \
+    libgflags-dev \
+    software-properties-common \
+    curl \
+    wget \
+    make \
+    pkg-config \
+    locales \
+    zlib1g-dev \
+"
+
+# Install dependencies
+RUN apt-get update \
+    && apt-get install --yes $BUILD_DEPS \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy source code
+COPY . /pushGateway/RocketChatMobilePushGateway
 WORKDIR /pushGateway/RocketChatMobilePushGateway
 
-RUN cmake . \
-   && make -j$(($(nproc) + 1)) \
-   && rm CMake* -rf \
-   && rm cmake* -rf
+# Build the project
+RUN mkdir build && cd build && cmake .. && make -j$(nproc) \
+    && rm -rf CMakeFiles CMakeCache.txt cmake_install.cmake
 
+# Stage 2: Runtime Stage
+FROM debian:12-slim
 
-FROM afelder/proxygen:v2020.09.28.00
-
+# Create non-root user for execution
 RUN useradd --no-log-init -g 0 -u 1001 pushgateway
 
+# Define runtime dependencies
+ARG RUNTIME_DEPS="libjsoncpp25 libgflags2.2 libc-ares2 libssl3"
+
+# Install runtime dependencies
 RUN apt-get update \
- && apt-get install --no-install-recommends -y libjsoncpp1 libcurl4 libboost-context1.65.1 \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+    && apt-get install --no-install-recommends -y $RUNTIME_DEPS \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /pushGateway/RocketChatMobilePushGateway /usr/local/bin/
+# Copy built artifacts
+COPY --from=build_stage /pushGateway/RocketChatMobilePushGateway/build/rocketChatMobilePushGateway /usr/local/bin/
 
-RUN mkdir -p /etc/RocketChatMobilePushGateway/credentials/google \
- && mkdir -p /etc/RocketChatMobilePushGateway/credentials/apple \
- && chown -R 1001:0 /etc/RocketChatMobilePushGateway \
- && ln -s /certs /etc/RocketChatMobilePushGateway/credentials
+# Prepare directory structure
+RUN mkdir -p /usr/local/etc/RocketChatMobilePushGateway/credentials/google \
+    && mkdir -p /usr/local/etc/RocketChatMobilePushGateway/credentials/apple \
+    && chown -R 1001:0 /usr/local/etc/RocketChatMobilePushGateway \
+    && ln -s /certs /usr/local/etc/RocketChatMobilePushGateway/credentials
 
 EXPOSE 11000
 
+# Switch to non-root user
 USER 1001
 
-CMD ["rocketChatMobilePushGateway","--logtostderr=1"]
-
+# Default command
+CMD ["rocketChatMobilePushGateway"]

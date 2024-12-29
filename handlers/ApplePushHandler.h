@@ -21,31 +21,21 @@
 #ifndef ROCKETCHATMOBILEPUSHGATEWAY_APPLEPUSHHANDLER_H
 #define ROCKETCHATMOBILEPUSHGATEWAY_APPLEPUSHHANDLER_H
 
-#include <folly/Memory.h>
-#include <proxygen/httpserver/ResponseBuilder.h>
-#include <proxygen/httpserver/RequestHandler.h>
-#include <proxygen/httpserver/RequestHandlerFactory.h>
+#include <drogon/HttpController.h>
 
+using namespace drogon;
 
-using namespace proxygen;
-
-class ApplePushHandler: public RequestHandler {
+class ApplePushHandler : public HttpController<ApplePushHandler>{
 public:
-    void onRequest(std::unique_ptr<HTTPMessage> headers) noexcept override  ;
 
-    void onBody(std::unique_ptr<folly::IOBuf> body) noexcept override  ;
+    METHOD_LIST_BEGIN
+    ADD_METHOD_TO(ApplePushHandler::pushMessage, "/push/apn/send", Post);
 
-    void onUpgrade(proxygen::UpgradeProtocol prot) noexcept override ;
+    METHOD_LIST_END
 
-    void onEOM() noexcept override;
+    void pushMessage(const HttpRequestPtr &,
+                      std::function<void(const HttpResponsePtr &)> &&callback) const;
 
-    void requestComplete() noexcept override;
-
-    void onError(ProxygenError err) noexcept override;
-
-private:
-    std::unique_ptr<folly::IOBuf> mBody;
-    std::unique_ptr<HTTPMessage> mHeaders;
 };
 
 

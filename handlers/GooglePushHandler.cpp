@@ -17,61 +17,40 @@
  * along with RocketChatMobilePushGateway. If not, see <http://www.gnu.org/licenses/>.                              *
  *                                                                                                                  *
  ********************************************************************************************************************/
-#include "GooglePushHandler.h"
 #include "../models/GooglePushModel.h"
-#include "../Settings.h"
 #include "../models/ForwardGatewayModel.h"
+#include "../Settings.h"
+#include "GooglePushHandler.h"
 
+#include "glog/logging.h"
 
-void GooglePushHandler::onRequest(std::unique_ptr<HTTPMessage> headers) noexcept {
-    mHeaders = std::move(headers);
-}
+void GooglePushHandler::pushMessage(const HttpRequestPtr &req,
+                      std::function<void(const HttpResponsePtr &)> &&callback)
+{
+    const auto resp = HttpResponse::newHttpResponse();
+    if (const auto body = req->getJsonObject(); !body)
+     {
+          LOG(ERROR) << "invalid json";
+          resp->setStatusCode(k400BadRequest);
+          resp->setBody(
+              "invalid payload, must be JSON");
+     }else{
 
-void GooglePushHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
-    if(mBody){
-        (*mBody).appendChain(std::move(body));
-    } else{
-        mBody = std::move(body);
-    }
-}
+         GooglePushModel googlePushModel(body);
+         if (googlePushModel.sendMessage()) {
+           resp->setStatusCode(k200OK);
+         }else if(Settings::forwardGatewayEnabled()){
+           ForwardGatewayModel forwardModel{};
+           if (auto bodyPtr = std::string(req->getBody()); forwardModel.forwardMessage(
+               std::move(bodyPtr), req->getPath().data()))
+           {
+             resp->setStatusCode(k200OK);
+           }else{
+             resp->setStatusCode(k500InternalServerError);
+             resp->setBody("failed to send push message through forwardgateway");
+           }
+         }
+     }
 
-void GooglePushHandler::onUpgrade(proxygen::UpgradeProtocol prot) noexcept {
-    std::ignore = prot;
-}
-
-void GooglePushHandler::onEOM() noexcept {
-    if (mBody) {
-        try {
-            std::string body(reinterpret_cast<const char *>((*mBody).data()));
-            GooglePushModel googlePushModel(body);
-            if (googlePushModel.sendMessage()) {
-                ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
-
-            } else if(Settings::forwardGatewayEnabled()){
-                ForwardGatewayModel forwardModel{};
-                if(forwardModel.forwardMessage(std::move(mHeaders), body)){
-                    ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
-                }else{
-                    ResponseBuilder(downstream_).status(forwardModel.returnStatusCode(), "FAILURE").body("failed to send push message through forwardgateway").sendWithEOM();
-                }
-            }else {
-                ResponseBuilder(downstream_).status(googlePushModel.returnStatusCode(), "FAILURE").body("failed to send push message").sendWithEOM();
-
-            }
-
-        } catch (Exception &e) {
-            LOG(ERROR) << "exception " << e.what() << std::endl;
-            ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push message").sendWithEOM();
-        }
-    } else {
-        ResponseBuilder(downstream_).status(400, "BAD REQUEST").body("failed to send push message").sendWithEOM();
-    }
-}
-
-void GooglePushHandler::requestComplete() noexcept {
-
-}
-
-void GooglePushHandler::onError(ProxygenError err) noexcept {
-    std::ignore = err;
+    callback(resp);
 }

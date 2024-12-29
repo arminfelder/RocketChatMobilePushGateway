@@ -18,38 +18,23 @@
  *                                                                                                                  *
  ********************************************************************************************************************/
 
-#include <gflags/gflags.h>
-#include <folly/Memory.h>
-#include <folly/io/async/EventBaseManager.h>
-#include <proxygen/httpserver/HTTPServer.h>
-#include <proxygen/httpserver/RequestHandlerFactory.h>
 #include <unistd.h>
-#include "HandlerFactory.h"
+
+#include <drogon/drogon.h>
+#include "glog/flags.h"
+#include "glog/logging.h"
+
+#include "Settings.h"
+#include "handlers/ApplePushHandler.h"
+#include "handlers/GooglePushHandler.h"
+#include "libs/drogon/trantor/trantor/utils/Logger.h"
 #include "models/GooglePushModel.h"
 #include "models/ApplePushModel.h"
-#include "models/ForwardGatewayModel.h"
-#include "Settings.h"
-
-using namespace proxygen;
-
-using folly::EventBase;
-using folly::EventBaseManager;
-using folly::SocketAddress;
-
-using Protocol = HTTPServer::Protocol;
-
-DEFINE_int32(http_port, 11000, "Port to listen on with HTTP protocol");
-DEFINE_int32(spdy_port, 11001, "Port to listen on with SPDY protocol");
-DEFINE_int32(h2_port, 11002, "Port to listen on with HTTP/2 protocol");
-DEFINE_string(ip, "0.0.0.0", "IP/Hostname to bind to");
-DEFINE_int32(threads, 0, "Number of threads to listen on. Numbers <= 0 "
-        "will use the number of cores on this machine.");
-
 
 int main(int argc, char* argv[]) {
 
+    std::ignore = argc;
     FLAGS_logtostderr = true;
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     google::InitGoogleLogging(argv[0]);
     google::InstallFailureSignalHandler();
@@ -58,35 +43,18 @@ int main(int argc, char* argv[]) {
     GooglePushModel::init();
     ApplePushModel::init();
 
-    std::vector<HTTPServer::IPConfig> IPs = {
-            {
-                    SocketAddress(FLAGS_ip, FLAGS_http_port, true), Protocol::HTTP
-            }
-    };
+    drogon::app()
+     .setLogLevel(trantor::Logger::kDebug)
+     .addListener("0.0.0.0", 11000)
+     .setThreadNum(0)
+    .setUploadPath("/tmp/upload");
 
-    if(FLAGS_threads <= 0){
-        FLAGS_threads = sysconf(_SC_NPROCESSORS_ONLN);
-        CHECK(FLAGS_threads > 0);
+    try {
+        drogon::app().run();
+    } catch (const std::exception& ex) {
+        LOG(ERROR) << "Application failed to start: " << ex.what();
+        return EXIT_FAILURE;
     }
-    HTTPServerOptions options;
-    options.threads = static_cast<size_t>(FLAGS_threads);
-    options.idleTimeout = std::chrono::milliseconds(60000);
-    options.shutdownOn = {SIGINT, SIGTERM};
-    options.enableContentCompression = false;
-    options.h2cEnabled = true;
-    options.handlerFactories = RequestHandlerChain()
-            .addThen<HandlerFactory>()
-            .build();
-
-    HTTPServer server(std::move(options));
-    server.bind(IPs);
-
-    // Start HTTPServer mainloop in a separate thread
-    std::thread t([&] () {
-        server.start();
-    });
-
-    t.join();
 
     return EXIT_SUCCESS;
 }

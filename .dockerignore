@@ -1,8 +1,8 @@
 .git
 .gitmodule
 .idea
-cmake-build-debug
-cmake-build-release
+.k8s
+cmake-build-*
 Dockerfile
 docker-buildenv
 cmake*

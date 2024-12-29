@@ -19,61 +19,37 @@
  ********************************************************************************************************************/
 
 #include "ApplePushHandler.h"
+#include "glog/logging.h"
 #include "../models/ApplePushModel.h"
 #include "../Settings.h"
 #include "../models/ForwardGatewayModel.h"
 
 
-void ApplePushHandler::onRequest(std::unique_ptr<HTTPMessage> headers) noexcept {
-    mHeaders = std::move(headers);
-}
 
-void ApplePushHandler::onBody(std::unique_ptr<folly::IOBuf> body) noexcept {
-    if(mBody){
-        (*mBody).appendChain(std::move(body));
-    } else{
-        mBody = std::move(body);
-    }
-}
-
-void ApplePushHandler::onUpgrade(proxygen::UpgradeProtocol prot) noexcept {
-    std::ignore = prot;
-}
-
-void ApplePushHandler::onEOM() noexcept {
-    if (mBody) {
-        try {
-            std::string body(reinterpret_cast<const char *>((*mBody).data()));
-            ApplePushModel applePushModel(body);
-            if (applePushModel.sendMessage()) {
-                ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
-
-            }else if(Settings::forwardGatewayEnabled()){
-                ForwardGatewayModel forwardModel{};
-                if(forwardModel.forwardMessage(std::move(mHeaders), body)){
-                    ResponseBuilder(downstream_).status(200, "OK").body("").sendWithEOM();
-                }else{
-                    ResponseBuilder(downstream_).status(forwardModel.returnStatusCode(), "FAILURE").body("failed to send push message through forwardgateway").sendWithEOM();
-                }
+void ApplePushHandler::pushMessage(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) const
+{
+    const auto resp = HttpResponse::newHttpResponse();
+    if (const auto body = req->getJsonObject(); !body)
+    {
+        LOG(ERROR) << "invalid json";
+        resp->setStatusCode(k400BadRequest);
+        resp->setBody(
+            "invalid payload, must be JSON");
+    }else{
+        if (ApplePushModel applePushModel(body); applePushModel.sendMessage()) {
+            resp->setStatusCode(k200OK);
+        }else if(Settings::forwardGatewayEnabled()){
+            ForwardGatewayModel forwardModel{};
+            if (auto bodyPtr = std::string(req->getBody()); forwardModel.forwardMessage(
+                std::move(bodyPtr), req->getPath().data()))
+            {
+                resp->setStatusCode(k200OK);
+            }else{
+                resp->setStatusCode(k500InternalServerError);
+                resp->setBody("failed to send push message through forwardgateway");
             }
-            else {
-                ResponseBuilder(downstream_).status(applePushModel.returnStatusCode(), "FAILURE").body("failed to send push message").sendWithEOM();
-
-            }
-
-        } catch (Exception &e) {
-            LOG(ERROR) << "exception " << e.what() << std::endl;
-            ResponseBuilder(downstream_).status(500, "FAILURE").body("failed to send push message").sendWithEOM();
         }
-    } else {
-        ResponseBuilder(downstream_).status(400, "BAD REQUEST").body("failed to send push message").sendWithEOM();
     }
-}
 
-void ApplePushHandler::requestComplete() noexcept {
-
-}
-
-void ApplePushHandler::onError(ProxygenError err) noexcept {
-    std::ignore = err;
+    callback(resp);
 }

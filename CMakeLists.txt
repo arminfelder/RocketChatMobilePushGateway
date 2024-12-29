@@ -1,63 +1,60 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.25)
 project(RocketChatMobilePushGateway)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -flto")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
-set(wangle_DIR /opt/proxygen/proxygen/_build/deps/lib/cmake/wangle)
-set(Fizz_DIR /opt/proxygen/proxygen/_build/deps/lib/cmake/fizz)
-set(fmt_DIR /opt/proxygen/proxygen/_build/deps/lib/cmake/fmt)
-set(folly_DIR /opt/proxygen/proxygen/_build/deps/lib/cmake/folly)
-set(proxygen_DIR /opt/proxygen/proxygen/_build/lib/cmake/proxygen)
+set(BUILD_SHARED_LIBS OFF)
 
-find_package(Boost COMPONENTS system filesystem context thread program_options regex iostreams REQUIRED)
-find_package(proxygen CONFIG REQUIRED)
-find_package(gflags COMPONENTS shared)
+set(BUILD_CTL OFF CACHE BOOL "")
+set(BUILD_EXAMPLES OFF CACHE BOOL "")
+set(BUILD_ORM OFF CACHE BOOL "")
+set(BUILD_DOC OFF CACHE BOOL "")
+set(BUILD_YAML_CONFIG OFF CACHE BOOL "")
+add_subdirectory(libs/drogon)
+unset(BUILD_CTL CACHE)
+unset(BUILD_EXAMPLES CACHE)
+unset(BUILD_ORM CACHE)
+unset(BUILD_DOC CACHE)
+unset(BUILD_YAML_CONFIG CACHE)
 
-add_subdirectory(libs/cpp-jwt)
+set(BUILD_EXAMPLES OFF CACHE BOOL "")
+add_subdirectory(libs/glog)
+unset(BUILD_EXAMPLES CACHE)
 
-include_directories(/usr/local/include/r3)
-include_directories(libs/cpp-jwt/include)
-include_directories(libs/cpp-base64)
-include_directories(/opt/proxygen/proxygen/_build/deps/include)
-include_directories(/opt/proxygen/proxygen/_build/include)
-include_directories(proxygen_INCLUDE_DIRS)
+set(JWT_BUILD_EXAMPLES OFF CACHE BOOL "")
+add_subdirectory(libs/jwt-cpp)
+unset(JWT_BUILD_EXAMPLES CACHE)
+
+set(BUILD_EXAMPLES OFF CACHE BOOL "")
+add_subdirectory(libs/cpr)
+unset(BUILD_EXAMPLES CACHE)
+
+include_directories(libs/jwt-cpp/include)
+include_directories(libs/drogon/lib/inc)
+include_directories(libs/cpr/include)
 
 set(SOURCE_FILES
         main.cpp
-        HandlerFactory.cpp
-        handlers/NotFoundHandler.cpp
-        utils.cpp
-        date.h
         Settings.cpp
-        handlers/ApplePushHandler.cpp
-        handlers/GooglePushHandler.cpp
-        handlers/GooglePushHandler.h
         models/GooglePushModel.cpp
         models/ApplePushModel.cpp
+        handlers/ApplePushHandler.cpp
+        handlers/GooglePushHandler.cpp
         models/ForwardGatewayModel.cpp
-        libs/cpp-base64/base64.cpp
         )
+
 add_executable(rocketChatMobilePushGateway ${SOURCE_FILES})
 
+target_compile_features(rocketChatMobilePushGateway PUBLIC cxx_std_23)
+
 target_link_libraries(rocketChatMobilePushGateway
-        -lglog
-        -pthread
-        -ljsoncpp
-        -lcurl
-        -lcrypto
-        /opt/proxygen/proxygen/_build/proxygen/httpserver/libproxygenhttpserver.a
-        proxygen::proxygen
-        ${Boost_FILESYSTEM_LIBRARY}
-        ${Boost_SYSTEM_LIBRARY}
-        ${Boost_CONTEXT_LIBRARY}
-        ${Boost_THREAD_LIBRARY}
-        ${Boost_PROGRAM_OPTIONS_LIBRARY}
-        ${Boost_REGEX_LIBRARY}
+        PRIVATE glog::glog
+        PRIVATE drogon
+        PRIVATE cpr::cpr
         ${CMAKE_DL_LIBS} )

@@ -21,34 +21,21 @@
 #ifndef ROCKETCHATMOBILEPUSHGATEWAY_GOOGLEPUSHHANDLER_H
 #define ROCKETCHATMOBILEPUSHGATEWAY_GOOGLEPUSHHANDLER_H
 
-#include <folly/Memory.h>
-#include <folly/dynamic.h>
-#include <folly/json.h>
-#include <proxygen/httpserver/ResponseBuilder.h>
-#include <proxygen/httpserver/RequestHandler.h>
-#include <proxygen/httpserver/RequestHandlerFactory.h>
-#include <jsoncpp/json/json.h>
+#include <drogon/HttpController.h>
 
+using namespace drogon;
 
-using namespace proxygen;
-
-class GooglePushHandler:  public RequestHandler{
+class GooglePushHandler:  public HttpController<GooglePushHandler>{
 public:
-    void onRequest(std::unique_ptr<HTTPMessage> headers) noexcept override;
+    METHOD_LIST_BEGIN
+    ADD_METHOD_TO(GooglePushHandler::pushMessage, "/push/gcm/send", Post);
 
-    void onBody(std::unique_ptr<folly::IOBuf> body) noexcept override;
-
-    void onUpgrade(proxygen::UpgradeProtocol prot) noexcept override;
-
-    void onEOM() noexcept override;
-
-    void requestComplete() noexcept override;
-
-    void onError(ProxygenError err) noexcept override;
+    METHOD_LIST_END
+    void pushMessage(const HttpRequestPtr &,
+                      std::function<void(const HttpResponsePtr &)> &&callback);
 
 private:
-    std::unique_ptr<folly::IOBuf> mBody;
-    std::unique_ptr<HTTPMessage> mHeaders;
+    std::unique_ptr<std::string> mBody;
 };
 
 
