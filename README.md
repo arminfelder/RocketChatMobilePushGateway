@@ -1,69 +1,111 @@
-## lightweight, push gateway for Rocket.Chat servers
+## Rocket.Chat Mobile Push Gateway Documentation
 
-### usage
+### Overview
 
-How do mobile devices get push notifications?  The Android app is registering itself with Google Firebase Messaging (former GCM), by using given credentials, built into the app, 
-the app then sends the received push token to the Rocket.Chat Server you are connected to. 
-The RC server then send notifications using the API key, which is related to the key the app is using, together with the token as recipent to Google, which is then sending it to the mobile.
-If you have your own RC server and want to use the Rocket.Chat cordova app, you would need to configure your server to forward the notifications to the app developers, 
-as they are the only ones, who are able to send push messages to their app. This is done by setting the push gateway.
-If you develop your own app or just build it yourself, you have to set your credentials from Google Firebase to your server.
-If you develop your own app, and want other servers to be able to use it, with push, then you need to setup your own gateway, 
-which then has to be used by the other servers. In that case you should use this gateway server. 
+This lightweight push gateway is designed for Rocket.Chat servers. It enables push notifications for mobile devices.
 
-### dependencies
+### How Push Notifications Work
 
-This project has dependencies, included via submodules, so you have to clone recursively.
+1. Mobile apps register with **Google Firebase Messaging** (formerly GCM) or Apple APNS using built-in credentials.
+2. The app sends the received push token to the connected Rocket.Chat server.
+3. The Rocket.Chat server uses the API credentials and push token to transmit notifications via Google Firebase or Apple APNS.
+4. Google or Apple forwards the push notifications to the mobile device.
 
-### manual build instructions
+#### Notes:
 
-- build and install proxygen libs: https://github.com/facebook/proxygen
-- install libjsoncpp-dev, libcurlpp0-dev, cmake
-- cmake 
-- make
-- either:
-   - set the environment variables
-     - FCM_SERVER_KEY
-     - APNS_PRIVATE_KEY(PEM format)
-       1. create key (see https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_token_based_connection_to_apns)
-       2. convert the *.p8 to pem
-          - wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar
-          - wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar.pubkey
-          - chmod +x jose.phar
-          - ./jose.phar key:convert:pkcs1 $(./jose.phar key:load:key ./AuthKey_*.p8) > key.pem
-     - APNS_TEAM_ID
-     - APNS_KEY
-     - APNS_APPID
-     
-   - place the credentials in the servers "credentials" directory:
-     - FCM -> google/serverKey.txt
-     - APNS ->
-        1. create key (see https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_token_based_connection_to_apns)
-        2. convert the *.p8 to pem
-            - wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar
-            - wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar.pubkey
-            - chmod +x jose.phar
-            - ./jose.phar key:convert:pkcs1 $(./jose.phar key:load:key ./AuthKey_*.p8) > key.pem
-        3. save the pem file apple/key.pem
-        4. create apple/setting.json file, that looks like:
-            
-            ``{
-                  "teamId":"YOUR_APPLE_DEVELOPER_TEAM_ID",
-                  "key": "THE_KEY_RELATED_TO_THE_p8(also part of the name AuthKey_[KEY].p8)",
-                  "appId": "YOUR_APP_ID (Bundle Id)"   
-              }``
- - opional
-   - enable forward gateway(allows to support chaining of gateways e.g. your own and gateway.rocket.chat, to support your own as well as the official apps)
-     - set environment variable FORWARD_GATEWAY_ENABLE=TRUE
-     - if neccessary set FORWARD_GATEWAY_URL (default is https://gateway.rocket.chat)
-### Docker build
-- run `docker build .`
-- place the credentials in the servers "credentials" directory (see "manual build instructions" for details)
-- mount your credentials folder into the container with -v /yourCertsFolder:/certs and run image
-    - yourCertsFolder/google/serverKey.txt
-    - yourCertsFolder/apple/cred.pem (see https://github.com/joshuakuai/PusherCpp)
+- If deploying your own Rocket.Chat server with the Rocket.Chat Cordova app, configure your server to forward
+  notifications to app developers who can send push messages.
+- For custom-built apps, configure your own credentials (Google Firebase/Apple APNS) on the server. Other servers can
+  use this gateway for push notifications.
 
-  e.g. `docker run -t gateway -v /yourCertsFolder:/certs -p 0.0.0.0:80:11000 <image id>`
-  
+---
+
+### Dependencies
+
+Make sure the following are installed before building:
+
+- `libjsoncpp-dev`
+- `cmake`
+- `git`
+- `zlib1g-dev`
+- `openssl`, `libssl-dev`
+- `uuid-dev`
+- `libgflags-dev`
+
+---
+
+### Manual Build Instructions
+
+1. **CMake Build**:
+    - Clone the repository recursively:
+      ```
+      git clone --recurse-submodules <repository_url>
+      ```
+    - Run:
+      ```
+      cmake .
+      make
+      ```
+
+2. **Set Credentials**:
+    - **Environment Variables**:
+        - `FCM_SERVICE_ACCOUNT_JSON`
+        - `APNS_PRIVATE_KEY` (PEM format):
+            1. Create a key
+               following [Apple's Guide](https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_token_based_connection_to_apns).
+            2. Convert the `.p8` file to PEM format:
+               ```
+               wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar
+               chmod +x jose.phar
+               ./jose.phar key:convert:pkcs1 $(./jose.phar key:load:key ./AuthKey_*.p8) > key.pem
+               ```
+        - Additional:
+            - `APNS_TEAM_ID`
+            - `APNS_KEY`
+            - `APNS_APPID`
+
+    - **Credentials Directory**:
+      ```
+      credentials/google/serverKey.txt
+      credentials/apple/key.pem
+      credentials/apple/setting.json
+      ```
+      Example `setting.json`:
+      ```json
+      {
+          "teamId": "YOUR_APPLE_DEVELOPER_TEAM_ID",
+          "key": "AUTHKEY_IDENTIFIER",
+          "appId": "YOUR_APP_BUNDLE_ID"
+      }
+      ```
+
+3. **Optional - Forward Gateway**:
+    - Enable chaining (supports custom + official apps):
+      ```
+      FORWARD_GATEWAY_ENABLE=TRUE
+      FORWARD_GATEWAY_URL=https://gateway.rocket.chat # Optional
+      ```
+
+---
+
+### Docker Build Instructions
+
+1. Build the Docker container:
+   ```
+   docker build .
+   ```
+2. Mount the credentials' folder:
+   ```
+   docker run -t gateway -v /yourCertsFolder:/certs -p 80:11000 <image_id>
+   ```
+   Folder structure:
+   ```
+   /yourCertsFolder/google/serverKey.txt
+   /yourCertsFolder/apple/key.pem
+   ```
+
+---
+
 ### Kubernetes
-adapt the exmaple files under ./k8s for your needs
+
+Adapt the example files in `./k8s` to suit your deployment requirements.

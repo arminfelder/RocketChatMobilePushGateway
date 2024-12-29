@@ -9,10 +9,6 @@
 #include <unordered_set>
 #include <string>
 #include <mutex>
-#include <memory>
-#include <proxygen/lib/http/HTTPMessage.h>
-
-using namespace proxygen;
 
 class ForwardGatewayModel {
 
@@ -21,10 +17,8 @@ public:
     static void claimRegistrationId(const std::string &pRegistrationId);
     static void unClaimRegistrationId(const std::string &pRegistrationId);
 
-    bool forwardMessage(std::unique_ptr<HTTPMessage> pHeaders, const std::string &pBody);
+    bool forwardMessage( std::string &&pJson, std::string &&pPath);
 
-    static size_t curlWriteCallback(void *buffer, size_t size, size_t nmemb,
-                                    void *this_ptr);
     int returnStatusCode() const;
 private:
     int mReturnStatusCode;

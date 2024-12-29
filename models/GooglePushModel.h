@@ -23,10 +23,7 @@
 
 #include <string>
 #include <jsoncpp/json/json.h>
-#include <curl/curl.h>
-#include <jwt/jwt.hpp>
-
-#include <proxygen/lib/http/HTTPMessage.h>
+#include <chrono>
 
 
 class GooglePushModel {
@@ -38,18 +35,12 @@ class GooglePushModel {
     } Token;
 
 public:
-    explicit GooglePushModel(const std::string &pJson);
+    explicit GooglePushModel(const std::shared_ptr<Json::Value>& pJson);
+    [[nodiscard]] std::string getPayload() const;
 
     bool sendMessage();
 
-    static int trace(CURL *handle, curl_infotype type,
-                        char *data, size_t size,
-                        void *userp);
-
     static void init();
-
-    static size_t curlFcmWriteCallback(void *buffer, size_t size, size_t nmemb,
-                                    void *this_ptr);
 
     int returnStatusCode() const;
 

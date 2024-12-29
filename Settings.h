@@ -5,6 +5,7 @@
 #ifndef ROCKETCHATMOBILEPUSHGATEWAY_SETTINGS_H
 #define ROCKETCHATMOBILEPUSHGATEWAY_SETTINGS_H
 
+#include <string>
 
 class Settings {
 
@@ -25,7 +26,7 @@ class Settings {
 public:
     static void init();
 
-    static bool setGoogleCredentialsFromServicAccountJson(const std::string &pServiceAccountJson);
+    static bool setGoogleCredentialsFromServiceAccountJson(const std::string &pServiceAccountJson);
     static bool forwardGatewayEnabled();
     static const std::string &forwardGatewayUrl();
     static const GoogleServiceAccount &fcmServiceAccount();
@@ -51,6 +52,7 @@ private:
     static std::string mApnsKey;
     static std::string mApnsAppId;
     static std::string mApnsPrivateKeyAlgo;
+    static std::string mConfigDir;
 };
 
 
