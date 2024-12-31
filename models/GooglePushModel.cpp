@@ -110,7 +110,7 @@ GooglePushModel::GooglePushModel(const std::shared_ptr<Json::Value>& pJson): mRe
  */
 std::string GooglePushModel::getPayload() const
 {
-    Json::Value root, messageData, notificationData, androidData, androidNotification;
+    Json::Value message, messageData, notificationData, android, androidNotification;
 
     // Construct message data
     messageData["title"] = mTitle;
@@ -126,32 +126,33 @@ std::string GooglePushModel::getPayload() const
     androidNotification["notification_count"] = mBadge;
     androidNotification["sound"] = mSound;
 
-    androidData["collapseKey"] = mFrom;
-    androidData["priority"] = 10;
-    androidData["notification"] = androidNotification;
+    android["collapseKey"] = mFrom;
+    android["priority"] = "HIGH";
+    android["notification"] = androidNotification;
 
     // Combine all data into the final object
-    root["notification"] = notificationData;
-    root["data"] = messageData;
-    root["token"] = mDeviceToken;
-    root["android"] = androidData;
+    message["notification"] = notificationData;
+    message["data"] = messageData;
+    message["token"] = mDeviceToken;
+    message["android"] = android;
+    message["badge"] = mBadge;
 
-    Json::Value finalMessage;
-    finalMessage["message"] = root;
+    Json::Value payloadJson;
+    payloadJson["message"] = message;
 
     Json::FastWriter fastWriter;
-    std::string payload = fastWriter.write(finalMessage);
+    std::string payload = fastWriter.write(payloadJson);
 
     uuid_t uuid;
     uuid_generate(uuid);
 
-    auto cleanedObj = finalMessage;
+    auto cleanedObj = payloadJson;
     cleanedObj["message"]["data"] = "---removed from log---";
     cleanedObj["message"]["notification"] = "---removed from log---";
     cleanedObj["message"]["token"] = "---removed from log---";
 
     LOG(INFO) << uuid << "\tGoogle push data\t" << cleanedObj;
-    return payload;
+    return payloadJson;
 }
 
 bool GooglePushModel::sendMessage() {
