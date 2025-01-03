@@ -61,7 +61,7 @@ LABEL org.opencontainers.image.authors="armin.felder@osalliance.com" \
 RUN useradd --no-log-init -g 0 -u 1001 pushgateway
 
 # Define runtime dependencies
-ARG RUNTIME_DEPS="libjsoncpp25 libgflags2.2 libc-ares2 libssl3 libpsl5 libnghttp2-14 libnghttp3-3"
+ARG RUNTIME_DEPS="ca-certificates libjsoncpp25 libgflags2.2 libc-ares2 libssl3 libpsl5 libnghttp2-14 libnghttp3-3"
 
 # Install runtime dependencies
 RUN apt-get update \
