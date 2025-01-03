@@ -24,6 +24,9 @@
 #include <string>
 #include <jsoncpp/json/json.h>
 #include <chrono>
+#include <mutex>
+#include <memory>
+#include "../models/GatewayNotification.h"
 
 
 class GooglePushModel {
@@ -35,39 +38,21 @@ class GooglePushModel {
     } Token;
 
 public:
-    explicit GooglePushModel(const std::shared_ptr<Json::Value>& pJson);
-    [[nodiscard]] std::string getPayload() const;
+    [[nodiscard]]static std::string getPayload(const GatewayNotification& pNotification);
 
-    bool sendMessage();
-
-    static void init();
+    static bool sendMessage(const GatewayNotification& pNotification);
 
     int returnStatusCode() const;
 
-    const std::string &getAccessToken();
+    static const std::string &getAccessToken();
 
-    bool requestAccessToken();
+    static bool requestAccessToken();
 
 private:
     static Token mAccessToken;
     static std::mutex mTokenMutex;
 
-    std::string mTitle;
-    std::string mText;
-    std::string mDeviceToken;
-    std::string mFrom;
-    std::string mPayload;
-    std::string mSound;
-    std::string mApn;
-    std::string mGcm;
-    std::string mQuery;
-    bool mSent{false};
-    int mSendind{0};
-    std::string mTopic;
-    int mBadge{0};
-
     int mReturnStatusCode;
-
 };
 
 

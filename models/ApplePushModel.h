@@ -25,43 +25,27 @@
 #include <uuid/uuid.h>
 #include <jsoncpp/json/json.h>
 #include <memory>
+#include "../models/GatewayNotification.h"
 
 class ApplePushModel {
 
+    typedef struct
+    {
+        std::string token;
+        std::chrono::time_point<std::chrono::system_clock> expires_in;
+    } Token;
+
 public:
-    explicit ApplePushModel(const std::shared_ptr<Json::Value>& pJson);
-    [[nodiscard]] std::string getPayload(const uuid_t& uuid) const;
+    [[nodiscard]] static std::string getPayload(const GatewayNotification& pNotification);
 
-    bool sendMessage();
+    static std::string& getAppleAuthToken();
 
-    static void init();
-
-    int returnStatusCode() const;
+    static bool sendMessage(const GatewayNotification& pNotification);
 
 private:
-    const std::string mApiUrl{"https://api.push.apple.com/3/device/"};
-
-    static std::string mPem;
-    static std::string mTeamId;
-    static std::string mAppId;
-    static std::string mKey;
-    static std::string mPrivateKeyAlgo;
-    std::string mTitle;
-    std::string mText;
-    std::string mDeviceToken;
-    std::string mFrom;
-    std::string mPayload;
-    std::string mSound;
-    std::string mApn;
-    std::string mGcm;
-    std::string mQuery;
-    bool mSent{false};
-    int mSendind{0};
-    std::string mTopic;
-    int mBadge{0};
-
-    int mReturnStatusCode;
-
+    static Token mAuthToken;
+    static std::mutex mTokenMutex;
+    const static std::string mApiUrl;
 };
 
 

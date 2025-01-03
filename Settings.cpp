@@ -7,12 +7,16 @@
 #include <regex>
 #include <jsoncpp/json/json.h>
 #include <fstream>
-#include <glog/logging.h>
+
+#include "drogon/utils/Utilities.h"
 
 #include "Settings.h"
 
+
+
 std::string Settings::mForwardGatewayUrl;
 bool Settings::mForwardGatewayEnabled = false;
+trantor::Logger::LogLevel Settings::mLogLevel = trantor::Logger::LogLevel::kInfo;
 Settings::GoogleServiceAccount Settings::mFcmServiceAccount;
 std::string Settings::mFcmProjectId;
 std::string Settings::mFcmApiEndpoint;
@@ -40,26 +44,56 @@ void Settings::init() {
     if(const auto configDir = std::getenv("CONFIG_DIR")){
         mConfigDir = std::string(configDir);
     }
-    LOG(INFO) << "Settings: Using config dir: " << mConfigDir;
+    LOG_INFO << "Settings: Using config dir: " << mConfigDir;
 
     loadApnKeyFile();
     loadApnSettingsFile();
     loadFcmServiceAccountJson();
+
+    if (const auto logEnv = std::getenv("LOG_LEVEL"))
+    {
+        std::string loglevel = logEnv;
+        std::ranges::transform(loglevel, loglevel.begin(),
+                               [](const unsigned char c){ return std::toupper(c); }
+        );
+
+        if (loglevel == "INFO")
+        {
+            mLogLevel = trantor::Logger::LogLevel::kInfo;
+        }else if (loglevel == "DEBUG")
+        {
+            mLogLevel = trantor::Logger::LogLevel::kDebug;
+        }else if (loglevel == "WARN")
+        {
+            mLogLevel = trantor::Logger::LogLevel::kWarn;
+        }else if (loglevel == "ERROR")
+        {
+            mLogLevel = trantor::Logger::LogLevel::kError;
+        }else if (loglevel == "FATAL")
+        {
+            mLogLevel = trantor::Logger::LogLevel::kFatal;
+        }else if (loglevel == "TRACE")
+        {
+            mLogLevel = trantor::Logger::LogLevel::kTrace;
+        }
+
+        LOG_INFO << "Settings: Debug Logging Enabled: " << loglevel;
+    }
 
     if(const auto enableForwardGateway = std::getenv("FORWARD_GATEWAY_ENABLE"); enableForwardGateway && std::string(enableForwardGateway) == "TRUE"){
         mForwardGatewayEnabled = true;
     }
     if(const auto forwardGatewayUrl = std::getenv("FORWARD_GATEWAY_URL")){
         mForwardGatewayUrl = std::regex_replace(std::string(forwardGatewayUrl),newLine,"");
-        LOG(INFO) << "Settings: Custom Forward Gateway enabled";
+        LOG_INFO << "Settings: Custom Forward Gateway enabled";
     }else{
         mForwardGatewayUrl = "https://gateway.rocket.chat";
-        LOG(INFO) << "Settings: Using default Forward Gateway";
+        LOG_INFO << "Settings: Using default Forward Gateway";
     }
 
     if(const auto fcmServiceAccountJson = std::getenv("FCM_SERVICE_ACCOUNT_JSON")){
         setGoogleCredentialsFromServiceAccountJson(std::string(fcmServiceAccountJson));
-        LOG(INFO) << "Settings: Using FCM ServiceAccount from env";
+        LOG_INFO << "Settings: Using FCM ServiceAccount from env";
     }else if (mFcmServiceAccount.project_id.empty()
         || mFcmServiceAccount.auth_provider_x509_cert_url.empty()
         || mFcmServiceAccount.auth_uri.empty()
@@ -72,52 +106,52 @@ void Settings::init() {
         || mFcmServiceAccount.universe_domain.empty()
     )
     {
-        LOG(ERROR) << "Settings: FCM ServiceAccount not found, or properties are missing";
+        LOG_ERROR << "Settings: FCM ServiceAccount not found, or properties are missing";
         exit(EXIT_FAILURE);
     }
 
     if(const auto apnsPrivateKey = std::getenv("APNS_PRIVATE_KEY")){
-        mApnsPrivateKey = std::string(apnsPrivateKey);
-        LOG(INFO) << "Settings: Using APNs Private Key from env";
+        mApnsPrivateKey = std::string(drogon::utils::base64Decode(apnsPrivateKey));
+        LOG_INFO << "Settings: Using APNs Private Key from env";
     }else if (mApnsPrivateKey.empty())
     {
-        LOG(ERROR) << "Settings: APNs Private Key not found";
+        LOG_ERROR << "Settings: APNs Private Key not found";
         exit(EXIT_FAILURE);
     }
 
     if(const auto apnsTeamId = std::getenv("APNS_TEAM_ID")){
         mApnsTeamId = std::string(apnsTeamId);
-        LOG(INFO) << "Settings: Using APNs TeamID from env";
+        LOG_INFO << "Settings: Using APNs TeamID from env";
     }else if (mApnsTeamId.empty())
     {
-        LOG(ERROR) << "Settings: APNs TeamID not found";
+        LOG_ERROR << "Settings: APNs TeamID not found";
         exit(EXIT_FAILURE);
     }
 
     if(const auto apnsKey = std::getenv("APNS_KEY")){
         mApnsKey = std::string(apnsKey);
-        LOG(INFO) << "Settings: Using APNs Key from env";
+        LOG_INFO << "Settings: Using APNs Key from env";
     }else if (mApnsKey.empty())
     {
-        LOG(ERROR) << "Settings: APNs Key not found";
+        LOG_ERROR << "Settings: APNs Key not found";
         exit(EXIT_FAILURE);
     }
 
     if(const auto apnsAppId = std::getenv("APNS_APPID")){
         mApnsAppId = std::string(apnsAppId);
-        LOG(INFO) << "Settings: Using APNs AppID from env";
+        LOG_INFO << "Settings: Using APNs AppID from env";
     }else if (mApnsAppId.empty())
     {
-        LOG(ERROR) << "Settings: APNs AppID not found";
+        LOG_ERROR << "Settings: APNs AppID not found";
         exit(EXIT_FAILURE);
     }
 
     if(const auto apnsPrivateKeyAlgo = std::getenv("APNS_PRIVATE_KEY_ALGO")){
         mApnsPrivateKeyAlgo = std::string(apnsPrivateKeyAlgo);
-        LOG(INFO) << "Settings: Using APNs Private Key Algo from env";
+        LOG_INFO << "Settings: Using APNs Private Key Algo from env";
     }else if (mApnsPrivateKeyAlgo.empty())
     {
-        LOG(ERROR) << "Settings: APNs Private Key Algo not found";
+        LOG_ERROR << "Settings: APNs Private Key Algo not found";
         exit(EXIT_FAILURE);
     }
 
@@ -178,7 +212,7 @@ bool Settings::setGoogleCredentialsFromServiceAccountJson(const std::string& pSe
             mFcmServiceAccount.universe_domain = std::move(universeDomain);
             return true;
         }
-        LOG(ERROR) << "failed to parse ServiceAccount JSON, keys missing";
+        LOG_ERROR << "failed to parse ServiceAccount JSON, keys missing";
     }
 
     return false;
@@ -196,6 +230,11 @@ bool Settings::setGoogleCredentialsFromServiceAccountJson(const std::string& pSe
  */
 bool Settings::forwardGatewayEnabled() {
     return mForwardGatewayEnabled;
+}
+
+trantor::Logger::LogLevel Settings::getLogLevel()
+{
+    return mLogLevel;
 }
 
 const std::string &Settings::forwardGatewayUrl() {
@@ -313,10 +352,10 @@ void Settings::loadApnKeyFile() {
     const std::string content((std::istreambuf_iterator<char>(ifsPem)),
                         (std::istreambuf_iterator<char>()));
     if (!content.empty()) {
-        LOG(INFO) << "Settings: Using APN key file";
+        LOG_INFO << "Settings: Using APN key file";
         mApnsPrivateKey = content;
     } else {
-        LOG(INFO) << "Settings: No APN key file found at "+mConfigDir+"/credentials/apple/key.pem";
+        LOG_INFO << "Settings: No APN key file found at "+mConfigDir+"/credentials/apple/key.pem";
     }
 }
 
@@ -344,7 +383,7 @@ void Settings::loadApnSettingsFile() {
     const std::string content((std::istreambuf_iterator<char>(ifsSettings)),
                         (std::istreambuf_iterator<char>()));
     if(!content.empty()) {
-        LOG(INFO) << "Settings: Using APN settings file";
+        LOG_INFO << "Settings: Using APN settings file";
         Json::Reader reader;
         Json::Value obj;
         reader.parse(content, obj);
@@ -352,17 +391,17 @@ void Settings::loadApnSettingsFile() {
             std::string appId = obj["appId"].asString();
             std::string teamId = obj["teamId"].asString();
             std::string key = obj["key"].asString();
-            if (!appId.empty() && !teamId.empty() && key.length()) {
+            if (!appId.empty() && !teamId.empty() && !key.empty()) {
                 mApnsAppId = std::move(appId);
                 mApnsTeamId = std::move(teamId);
                 mApnsKey = std::move(key);
             } else {
-                LOG(ERROR) << "Error JSON data invalid";
+                LOG_ERROR << "Error JSON data invalid";
                 exit(EXIT_FAILURE);
             }
         }
     } else {
-        LOG(INFO) << "Settings: No APN settings file found at "<<mConfigDir<<"/credentials/apple/settings.json";
+        LOG_INFO << "Settings: No APN settings file found at "<<mConfigDir<<"/credentials/apple/settings.json";
     }
 }
 
@@ -384,13 +423,13 @@ void Settings::loadFcmServiceAccountJson() {
     const std::string content((std::istreambuf_iterator<char>(ifs)),
                         (std::istreambuf_iterator<char>()));
     if (!content.empty()) {
-        LOG(INFO) << "Settings: Using FCM ServiceAccount JSON";
+        LOG_INFO << "Settings: Using FCM ServiceAccount JSON";
         if (!setGoogleCredentialsFromServiceAccountJson(content))
         {
-            LOG(ERROR) << "failed to parse ServiceAccount JSON";
+            LOG_ERROR << "failed to parse ServiceAccount JSON";
         }
 
     } else {
-        LOG(INFO) << "Settings: No FCM ServiceAccount JSON file found at "<<mConfigDir<<"/credentials/google/serviceAccount.json";
+        LOG_INFO << "Settings: No FCM ServiceAccount JSON file found at "<<mConfigDir<<"/credentials/google/serviceAccount.json";
     }
 }

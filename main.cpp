@@ -19,40 +19,27 @@
  ********************************************************************************************************************/
 
 #include <unistd.h>
-
 #include <drogon/drogon.h>
-#include "glog/flags.h"
-#include "glog/logging.h"
 
-#include "Settings.h"
-#include "handlers/ApplePushHandler.h"
-#include "handlers/GooglePushHandler.h"
 #include "libs/drogon/trantor/trantor/utils/Logger.h"
-#include "models/GooglePushModel.h"
-#include "models/ApplePushModel.h"
+#include "Settings.h"
 
-int main(int argc, char* argv[]) {
+int main(const int argc, char* argv[]) {
 
     std::ignore = argc;
-    FLAGS_logtostderr = true;
-
-    google::InitGoogleLogging(argv[0]);
-    google::InstallFailureSignalHandler();
+    std::ignore = argv;
 
     Settings::init();
-    GooglePushModel::init();
-    ApplePushModel::init();
 
     drogon::app()
-     .setLogLevel(trantor::Logger::kDebug)
+     .setLogLevel(Settings::getLogLevel())
      .addListener("0.0.0.0", 11000)
-     .setThreadNum(0)
-    .setUploadPath("/tmp/upload");
+     .setThreadNum(0);
 
     try {
         drogon::app().run();
     } catch (const std::exception& ex) {
-        LOG(ERROR) << "Application failed to start: " << ex.what();
+        LOG_ERROR << "Application failed to start: " << ex.what();
         return EXIT_FAILURE;
     }
 

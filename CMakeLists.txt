@@ -23,10 +23,6 @@ unset(BUILD_ORM CACHE)
 unset(BUILD_DOC CACHE)
 unset(BUILD_YAML_CONFIG CACHE)
 
-set(BUILD_EXAMPLES OFF CACHE BOOL "")
-add_subdirectory(libs/glog)
-unset(BUILD_EXAMPLES CACHE)
-
 set(JWT_BUILD_EXAMPLES OFF CACHE BOOL "")
 add_subdirectory(libs/jwt-cpp)
 unset(JWT_BUILD_EXAMPLES CACHE)
@@ -47,14 +43,15 @@ set(SOURCE_FILES
         handlers/ApplePushHandler.cpp
         handlers/GooglePushHandler.cpp
         models/ForwardGatewayModel.cpp
-        )
+        models/GatewayNotification.cpp
+        models/GatewayNotification.h
+)
 
 add_executable(rocketChatMobilePushGateway ${SOURCE_FILES})
 
 target_compile_features(rocketChatMobilePushGateway PUBLIC cxx_std_23)
 
 target_link_libraries(rocketChatMobilePushGateway
-        PRIVATE glog::glog
         PRIVATE drogon
         PRIVATE cpr::cpr
         ${CMAKE_DL_LIBS} )

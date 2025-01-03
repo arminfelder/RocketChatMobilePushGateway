@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include "trantor/utils/Logger.h"
+
 class Settings {
 
     typedef struct
@@ -28,6 +30,8 @@ public:
 
     static bool setGoogleCredentialsFromServiceAccountJson(const std::string &pServiceAccountJson);
     static bool forwardGatewayEnabled();
+    static trantor::Logger::LogLevel getLogLevel();
+
     static const std::string &forwardGatewayUrl();
     static const GoogleServiceAccount &fcmServiceAccount();
     static const std::string &fcmProjectId();
@@ -43,6 +47,7 @@ private:
     static void loadApnSettingsFile();
     static void loadFcmServiceAccountJson();
     static bool mForwardGatewayEnabled;
+    static trantor::Logger::LogLevel mLogLevel;
     static std::string mForwardGatewayUrl;
     static GoogleServiceAccount mFcmServiceAccount;
     static std::string mFcmProjectId;

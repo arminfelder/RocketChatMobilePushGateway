@@ -12,7 +12,7 @@ std::unordered_set<std::string> ForwardGatewayModel::mRegistrationIds;
 bool ForwardGatewayModel::ownsRegistrationId(const std::string& pRegistrationId)
 {
     std::lock_guard lock(mRegistrationIdsMutex);
-    return mRegistrationIds.find(pRegistrationId) != mRegistrationIds.end();
+    return mRegistrationIds.contains(pRegistrationId);
 }
 
 void ForwardGatewayModel::claimRegistrationId(const std::string& pRegistrationId)
