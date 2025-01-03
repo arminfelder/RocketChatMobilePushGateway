@@ -22,7 +22,7 @@
 #include "../Settings.h"
 #include "GooglePushHandler.h"
 
-#include "glog/logging.h"
+#include "../models/GatewayNotification.h"
 
 void GooglePushHandler::pushMessage(const HttpRequestPtr &req,
                       std::function<void(const HttpResponsePtr &)> &&callback)
@@ -30,25 +30,46 @@ void GooglePushHandler::pushMessage(const HttpRequestPtr &req,
     const auto resp = HttpResponse::newHttpResponse();
     if (const auto body = req->getJsonObject(); !body)
      {
-          LOG(ERROR) << "invalid json";
+          LOG_ERROR << "invalid json";
           resp->setStatusCode(k400BadRequest);
           resp->setBody(
               "invalid payload, must be JSON");
      }else{
+        if (const auto payload = GatewayNotification::fromJson(req->getJsonObject()); payload.first)
+         {
+             if (!GooglePushModel::sendMessage(payload.first.value()))
+             {
 
-         GooglePushModel googlePushModel(body);
-         if (googlePushModel.sendMessage()) {
-           resp->setStatusCode(k200OK);
-         }else if(Settings::forwardGatewayEnabled()){
-           ForwardGatewayModel forwardModel{};
-           if (auto bodyPtr = std::string(req->getBody()); forwardModel.forwardMessage(
-               std::move(bodyPtr), req->getPath().data()))
-           {
-             resp->setStatusCode(k200OK);
-           }else{
-             resp->setStatusCode(k500InternalServerError);
-             resp->setBody("failed to send push message through forwardgateway");
-           }
+                 if(Settings::forwardGatewayEnabled())
+                 {
+                     ForwardGatewayModel forwardModel{};
+                     if (auto bodyPtr = std::string(req->getBody()); forwardModel.forwardMessage(
+                         std::move(bodyPtr), req->getPath().data()))
+                     {
+                         resp->setStatusCode(k200OK);
+                     }else{
+                         resp->setStatusCode(k500InternalServerError);
+                         resp->setBody("failed to send push message through forwardgateway");
+                     }
+                 }else
+                 {
+                     resp->setStatusCode(k500InternalServerError);
+                     resp->setBody("failed to send push message");
+                 }
+             }else
+                resp->setStatusCode(k200OK);
+         }else
+         {
+             Json::FastWriter writer;
+             Json::Value error;
+             for (const auto &elem: payload.second.value())
+             {
+                 error.append(elem);
+             }
+
+             resp->setStatusCode(k400BadRequest);
+             resp->setBody(writer.write(error));
+             resp->setContentTypeCode(ContentType::CT_APPLICATION_JSON);
          }
      }
 

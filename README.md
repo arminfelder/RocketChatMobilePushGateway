@@ -53,11 +53,11 @@ Make sure the following are installed before building:
         - `APNS_PRIVATE_KEY` (PEM format):
             1. Create a key
                following [Apple's Guide](https://developer.apple.com/documentation/usernotifications/setting_up_a_remote_notification_server/establishing_a_token_based_connection_to_apns).
-            2. Convert the `.p8` file to PEM format:
+            2. Convert the `.p8` file to PEM format and encode base64:
+               e.g.
                ```
-               wget https://github.com/web-token/jwt-app/raw/gh-pages/jose.phar
-               chmod +x jose.phar
-               ./jose.phar key:convert:pkcs1 $(./jose.phar key:load:key ./AuthKey_*.p8) > key.pem
+               openssl pkcs8 -nocrypt -in key.p8 -out key.pem
+               cat key.pem | base64 -w0
                ```
         - Additional:
             - `APNS_TEAM_ID`
@@ -66,7 +66,7 @@ Make sure the following are installed before building:
 
     - **Credentials Directory**:
       ```
-      credentials/google/serverKey.txt
+      credentials/google/serviceAccount.json
       credentials/apple/key.pem
       credentials/apple/setting.json
       ```

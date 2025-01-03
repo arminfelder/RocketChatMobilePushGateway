@@ -19,18 +19,16 @@
  ********************************************************************************************************************/
 #include <fstream>     // For file handling
 #include <iostream>    // For standard input/output
+#include <uuid/uuid.h>
 
 // Third-party libraries
 #include <jwt-cpp/jwt.h>     // For JSON Web Token functionality
 #include "cpr/api.h"         // For HTTP requests
 #include "cpr/response.h"
 #include "drogon/HttpClient.h" // For HTTP client handling in Drogon
-#include "glog/logging.h"      // For Google logging
 
 // Project-specific includes
 #include "GooglePushModel.h"
-
-#include <uuid/uuid.h>
 
 #include "ForwardGatewayModel.h"
 #include "../Settings.h"
@@ -38,66 +36,6 @@
 GooglePushModel::Token GooglePushModel::mAccessToken;
 std::mutex GooglePushModel::mTokenMutex;
 
-GooglePushModel::GooglePushModel(const std::shared_ptr<Json::Value>& pJson): mReturnStatusCode(0)
-{
-    if (pJson)
-    {
-        if (pJson->isMember("token") && pJson->isMember("options"))
-        {
-            Json::FastWriter fast;
-
-            const Json::Value& options = (*pJson)["options"];
-
-            const Json::Value& apn = options["gcm"];
-            std::string test(fast.write(options));
-            if (apn.isMember("text"))
-            {
-                std::string temp = apn["text"].asString();
-                unsigned long index = 0;
-                while (true)
-                {
-                    index = temp.find('\n', index);
-                    if (index == std::string::npos)
-                    {
-                        break;
-                    }
-                    temp.replace(index, 1, "\\r\\n");
-                    index += 4;
-                }
-                mApn = std::move(temp);
-            }
-            if (options.isMember("title"))
-            {
-                mTitle = options["title"].asString();
-            }
-            if (options.isMember("text"))
-            {
-                mText = options["text"].asString();
-            }
-            if (options.isMember("from"))
-            {
-                mFrom = options["from"].asString();
-            }
-            if (options.isMember("badge"))
-            {
-                mBadge = options["badge"].asInt();
-            }
-            if (options.isMember("payload"))
-            {
-                mPayload = fast.write(options["payload"]);
-            }
-            if (options.isMember("topic"))
-            {
-                mTopic = options["topic"].asString();
-            }
-            if (options.isMember("sound"))
-            {
-                mSound = options["sound"].asString();
-            }
-            mDeviceToken = (*pJson)["token"].asString();
-        }
-    }
-}
 
 /**
  * Retrieves the payload data associated with a specific operation or request.
@@ -108,95 +46,136 @@ GooglePushModel::GooglePushModel(const std::shared_ptr<Json::Value>& pJson): mRe
  * @return A string containing the payload data if available and successfully retrieved.
  *         Returns an empty string or an error message in case the payload is unavailable or retrieval fails.
  */
-std::string GooglePushModel::getPayload() const
+std::string GooglePushModel::getPayload(const GatewayNotification& pNotification)
 {
-    Json::Value root, messageData, notificationData, androidData, androidNotification;
+    Json::Value message, data, notification, android, androidNotification;
 
     // Construct message data
-    messageData["title"] = mTitle;
-    messageData["body"] = mText;
-    messageData["message"] = mText;
-    messageData["ejson"] = mPayload;
 
-    // Construct notification data
-    notificationData["title"] = mTitle;
-    notificationData["body"] = mText;
+    if (pNotification.getEJson())
+    {
+        data["ejson"] = pNotification.getEJson().value();
+    }
+
+    if (pNotification.getGcm() && pNotification.getGcm()->image)
+    {
+        data["image"] = pNotification.getGcm()->image.value();
+    }
+
+    if (pNotification.getSound())
+    {
+        data["sound"] = pNotification.getSound().value();
+    }
+
+    if (pNotification.getBadge())
+    {
+        data["badge"] = std::to_string(pNotification.getBadge().value());
+    }
+
+    if (pNotification.getNotId())
+    {
+        data["notId"] = std::to_string(pNotification.getNotId().value());
+    }
+
+    if (pNotification.getGcm() && pNotification.getGcm()->style)
+    {
+        data["style"] = pNotification.getGcm()->style.value();
+    }
+
+    if (pNotification.getContentAvailable() && pNotification.getContentAvailable().value() == true)
+    {
+        data["content-available"] = "true";
+    }
+
+    notification["title"] = pNotification.getTitle();
+    notification["body"] = pNotification.getText();
+
+    android["priority"] = "HIGH";
 
     // Construct Android-specific notification data
-    androidNotification["notification_count"] = mBadge;
-    androidNotification["sound"] = mSound;
-
-    androidData["collapseKey"] = mFrom;
-    androidData["priority"] = 10;
-    androidData["notification"] = androidNotification;
+    android["collapseKey"] = pNotification.getFrom();
+    android["notification"] = androidNotification;
 
     // Combine all data into the final object
-    root["notification"] = notificationData;
-    root["data"] = messageData;
-    root["token"] = mDeviceToken;
-    root["android"] = androidData;
+    message["notification"] = notification;
+    message["data"] = data;
+    message["token"] = pNotification.getToken().value();
+    message["android"] = android;
 
-    Json::Value finalMessage;
-    finalMessage["message"] = root;
+    Json::Value payloadJson;
+    payloadJson["message"] = message;
 
     Json::FastWriter fastWriter;
-    std::string payload = fastWriter.write(finalMessage);
+    std::string payload = fastWriter.write(payloadJson);
 
     uuid_t uuid;
     uuid_generate(uuid);
 
-    auto cleanedObj = finalMessage;
+    auto cleanedObj = payloadJson;
     cleanedObj["message"]["data"] = "---removed from log---";
     cleanedObj["message"]["notification"] = "---removed from log---";
     cleanedObj["message"]["token"] = "---removed from log---";
 
-    LOG(INFO) << uuid << "\tGoogle push data\t" << cleanedObj;
+    LOG_DEBUG <<  uuid << "\tGoogle push data\t" << fastWriter.write(cleanedObj);
     return payload;
 }
 
-bool GooglePushModel::sendMessage() {
-
-    if(ForwardGatewayModel::ownsRegistrationId(mDeviceToken)){
+bool GooglePushModel::sendMessage(const GatewayNotification& pNotification)
+{
+    if (ForwardGatewayModel::ownsRegistrationId(pNotification.getToken().value()))
+    {
         return false;
     }
+
+    const auto payload = getPayload(pNotification);
+
 
     const auto response = cpr::Post(cpr::Url{Settings::fcmApiEndpoint()},
                                     cpr::Header{
                                         {"Content-Type", "application/json; UTF-8"},
-                                        {"Authorization", "Bearer " + getAccessToken()}
+                                        {"Authorization", "Bearer " + GooglePushModel::getAccessToken()}
                                     },
-                                    cpr::Body{getPayload()});
+                                    cpr::Body{payload},
+                                    cpr::Verbose(Settings::getLogLevel() == trantor::Logger::LogLevel::kTrace)
+                                    );
 
-    if (response.status_code == 200)
+    if (response.error.code == cpr::ErrorCode::OK)
     {
-        Json::Value obj;
-        Json::Reader reader;
-        reader.parse(response.text, obj);
-        if (obj.isMember("failure") && obj.isMember("success") && obj.isMember("results") && obj["failure"].asBool())
+        if (response.status_code == 200)
         {
-            LOG(ERROR) << "failed to send notification, Error:" << response.text;
-            for (auto results = obj["results"]; const auto& elem : results)
+            Json::Value obj;
+            Json::Reader reader;
+            reader.parse(response.text, obj);
+            if (obj.isMember("failure") && obj.isMember("success") && obj.isMember("results") && obj["failure"].
+                asBool())
             {
-                if (elem.isMember("error") && elem["error"].asString() == "MismatchSenderId")
+                LOG_ERROR << "failed to send notification, Error:" << response.text;
+                for (auto results = obj["results"]; const auto& elem : results)
                 {
-                    ForwardGatewayModel::claimRegistrationId(mDeviceToken);
-                    LOG(INFO) << "MismatchSenderId mark if for forward gateway";
-                    mReturnStatusCode = 406;
-                    break;
+                    if (elem.isMember("error") && elem["error"].asString() == "MismatchSenderId")
+                    {
+                        ForwardGatewayModel::claimRegistrationId(pNotification.getToken().value());
+                        LOG_INFO << "MismatchSenderId mark if for forward gateway";
+                        break;
+                    }
                 }
+                return false;
             }
+            return true;
+        }
+        else
+        {
+            LOG_ERROR << "failed to send notification, Error:" << response.text;
             return false;
         }
-        mReturnStatusCode = 200;
-        return true;
     }
-    LOG(ERROR) << "failed to send notification, Error:" << response.text;
-    mReturnStatusCode = 500;
+    else
+    {
+        LOG_ERROR << "failed to send notification, Error:" << response.error.message;
+        return false;;
+    }
+    LOG_ERROR << "failed to send notification, Error:" << response.text;
     return false;
-}
-
-void GooglePushModel::init()
-{
 }
 
 int GooglePushModel::returnStatusCode() const
@@ -238,21 +217,28 @@ const std::string& GooglePushModel::getAccessToken()
  */
 std::string getGoogleAuthJWT()
 {
-    const auto now = std::chrono::system_clock::now();
-    const auto expiry = now + std::chrono::hours(1);
+    try
+    {
+        const auto now = std::chrono::system_clock::now();
+        const auto expiry = now + std::chrono::hours(1);
 
-    auto token = jwt::create().set_type("JWT")
-                              .set_issuer(Settings::fcmServiceAccount().client_email)
-                              .set_algorithm("RS256")
-                              .set_payload_claim(
-                                  "scope", picojson::value("https://www.googleapis.com/auth/firebase.messaging"))
-                              .set_key_id(Settings::fcmServiceAccount().private_key_id)
-                              .set_audience(Settings::fcmServiceAccount().token_uri)
-                              .set_issued_at(now)
-                              .set_expires_at(expiry)
-                              .sign(jwt::algorithm::rs256{"", Settings::fcmServiceAccount().private_key});
-
-    return token;
+        auto token = jwt::create().set_type("JWT")
+                                  .set_issuer(Settings::fcmServiceAccount().client_email)
+                                  .set_algorithm("RS256")
+                                  .set_payload_claim(
+                                      "scope", picojson::value("https://www.googleapis.com/auth/firebase.messaging"))
+                                  .set_key_id(Settings::fcmServiceAccount().private_key_id)
+                                  .set_audience(Settings::fcmServiceAccount().token_uri)
+                                  .set_issued_at(now)
+                                  .set_expires_at(expiry)
+                                  .sign(jwt::algorithm::rs256{"", Settings::fcmServiceAccount().private_key});
+        return token;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR << e.what();
+    }
+    return "";
 }
 
 /**
@@ -274,30 +260,32 @@ cpr::Response sendAccessTokenRequest(const std::string& endpoint, const std::str
     return cpr::Post(
         cpr::Url{endpoint},
         cpr::Header{{"Content-Type", CONTENT_TYPE}},
-        cpr::Body{GRANT_TYPE + jwtToken}
+        cpr::Body{GRANT_TYPE + jwtToken},
+        cpr::Verbose(Settings::getLogLevel() == trantor::Logger::LogLevel::kTrace)
     );
 }
 
 bool GooglePushModel::requestAccessToken()
 {
-    const auto jwtToken = getGoogleAuthJWT();
-
-    if (const auto httpResponse = sendAccessTokenRequest(Settings::fcmServiceAccount().token_uri, jwtToken); httpResponse.status_code == 200)
+    if (const auto jwtToken = getGoogleAuthJWT(); !jwtToken.empty())
     {
-        Json::Reader reader;
-        Json::Value obj;
-        reader.parse(httpResponse.text, obj);
-
-        if (obj.isMember("access_token") && obj.isMember("expires_in"))
+        if (const auto httpResponse = sendAccessTokenRequest(Settings::fcmServiceAccount().token_uri, jwtToken);
+            httpResponse.status_code == 200)
         {
-            mAccessToken.token = obj["access_token"].asString();
-            const auto now = std::chrono::system_clock::now();
-            const auto expiry = now + std::chrono::seconds(obj["expires_in"].asInt()) - std::chrono::seconds(10);
-            mAccessToken.expires_in = expiry;
+            Json::Reader reader;
+            Json::Value obj;
+            reader.parse(httpResponse.text, obj);
 
-            return true;
+            if (obj.isMember("access_token") && obj.isMember("expires_in"))
+            {
+                mAccessToken.token = obj["access_token"].asString();
+                const auto now = std::chrono::system_clock::now();
+                const auto expiry = now + std::chrono::seconds(obj["expires_in"].asInt()) - std::chrono::seconds(10);
+                mAccessToken.expires_in = expiry;
+
+                return true;
+            }
         }
     }
     return false;
-
 }

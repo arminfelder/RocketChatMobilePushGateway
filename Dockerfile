@@ -1,5 +1,5 @@
 # Stage 1: Build Stage
-FROM debian:12 as build_stage
+FROM debian:12 AS build_stage
 
 # Use noninteractive environment for apt
 ENV DEBIAN_FRONTEND=noninteractive
@@ -24,6 +24,9 @@ ARG BUILD_DEPS="\
     pkg-config \
     locales \
     zlib1g-dev \
+    libpsl-dev \
+    libnghttp2-dev \
+    libnghttp3-dev \
 "
 
 # Install dependencies

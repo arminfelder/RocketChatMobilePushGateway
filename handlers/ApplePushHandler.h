@@ -34,7 +34,7 @@ public:
     METHOD_LIST_END
 
     void pushMessage(const HttpRequestPtr &,
-                      std::function<void(const HttpResponsePtr &)> &&callback) const;
+                      std::function<void(const HttpResponsePtr &)> &&callback) ;
 
 };
 

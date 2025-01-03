@@ -1,12 +1,9 @@
-[submodule "libs/gflags"]
-	path = libs/gflags
-	url = https://github.com/gflags/gflags.git
-[submodule "libs/glog"]
-	path = libs/glog
-	url = https://github.com/google/glog.git
 [submodule "libs/jwt-cpp"]
 	path = libs/jwt-cpp
 	url = https://github.com/Thalhammer/jwt-cpp
 [submodule "libs/cpr"]
 	path = libs/cpr
 	url = git@github.com:libcpr/cpr.git
+[submodule "libs/drogon"]
+	path = libs/drogon
+	url = https://github.com/drogonframework/drogon.git

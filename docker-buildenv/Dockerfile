@@ -1,6 +1,9 @@
 FROM docker.io/debian:12
 
 ARG SSH_PASS
+ARG UID=1000
+RUN useradd -m -u ${UID} -s /bin/bash builder
+
 
 LABEL maintainer="armin.felder@osalliance.com"
 
@@ -37,7 +40,10 @@ RUN apt-get update \
         libgflags-dev \
         doxygen \
         openssh-server \
-        rsync
+        rsync \
+        libpsl-dev \
+        libnghttp2-dev \
+        libnghttp3-dev
 
 
 RUN mkdir /var/run/sshd
@@ -47,6 +53,8 @@ RUN echo 'root:${SSH_PASS}' | chpasswd
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
+RUN chmod -R 777 /tmp
 
 EXPOSE 22
 CMD ["/usr/sbin/sshd", "-D"]

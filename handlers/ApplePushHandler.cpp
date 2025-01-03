@@ -19,35 +19,59 @@
  ********************************************************************************************************************/
 
 #include "ApplePushHandler.h"
-#include "glog/logging.h"
+
 #include "../models/ApplePushModel.h"
 #include "../Settings.h"
 #include "../models/ForwardGatewayModel.h"
 
 
 
-void ApplePushHandler::pushMessage(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) const
+void ApplePushHandler::pushMessage(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback)
 {
     const auto resp = HttpResponse::newHttpResponse();
     if (const auto body = req->getJsonObject(); !body)
     {
-        LOG(ERROR) << "invalid json";
+        LOG_ERROR << "invalid json";
         resp->setStatusCode(k400BadRequest);
         resp->setBody(
             "invalid payload, must be JSON");
-    }else{
-        if (ApplePushModel applePushModel(body); applePushModel.sendMessage()) {
-            resp->setStatusCode(k200OK);
-        }else if(Settings::forwardGatewayEnabled()){
-            ForwardGatewayModel forwardModel{};
-            if (auto bodyPtr = std::string(req->getBody()); forwardModel.forwardMessage(
-                std::move(bodyPtr), req->getPath().data()))
+    }else
+    {
+        if (const auto [gatewayNotification, errors] = GatewayNotification::fromJson(req->getJsonObject()); gatewayNotification){
+
+            if (!ApplePushModel::sendMessage(gatewayNotification.value()))
             {
+
+                if(Settings::forwardGatewayEnabled())
+                {
+                    ForwardGatewayModel forwardModel{};
+                    if (auto bodyPtr = std::string(req->getBody()); forwardModel.forwardMessage(
+                        std::move(bodyPtr), req->getPath().data()))
+                    {
+                        resp->setStatusCode(k200OK);
+                    }else{
+                        resp->setStatusCode(k500InternalServerError);
+                        resp->setBody("failed to send push message through forwardgateway");
+                    }
+                }else
+                {
+                    resp->setStatusCode(k500InternalServerError);
+                    resp->setBody("failed to send push message");
+                }
+            }else
                 resp->setStatusCode(k200OK);
-            }else{
-                resp->setStatusCode(k500InternalServerError);
-                resp->setBody("failed to send push message through forwardgateway");
+        }else
+        {
+            Json::FastWriter writer;
+            Json::Value error;
+            for (const auto &elem: errors.value())
+            {
+                error.append(elem);
             }
+
+            resp->setStatusCode(k400BadRequest);
+            resp->setBody(writer.write(error));
+            resp->setContentTypeCode(ContentType::CT_APPLICATION_JSON);
         }
     }
 

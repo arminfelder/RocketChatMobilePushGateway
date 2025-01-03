@@ -24,168 +24,160 @@
 #include <fstream>
 #include <jwt-cpp/jwt.h>
 #include <cpr/api.h>
-#include <glog/logging.h>
 
 // Project-specific headers
 #include "../Settings.h"
 #include "ApplePushModel.h"
 #include "ForwardGatewayModel.h"
 
+const std::string ApplePushModel::mApiUrl{"https://api.push.apple.com/3/device/"};
+ApplePushModel::Token ApplePushModel::mAuthToken;
+std::mutex ApplePushModel::mTokenMutex;
 
-std::string ApplePushModel::mPem;
-std::string ApplePushModel::mTeamId;
-std::string ApplePushModel::mAppId;
-std::string ApplePushModel::mKey;
-std::string ApplePushModel::mPrivateKeyAlgo;
-
-ApplePushModel::ApplePushModel(const std::shared_ptr<Json::Value>& pJson): mReturnStatusCode(0)
+std::string ApplePushModel::getPayload(const GatewayNotification& pNotification)
 {
-    if (pJson)
-    {
-        if (pJson->isMember("token") && pJson->isMember("options"))
-        {
-            Json::Value options = (*pJson)["options"];
-
-            if (options.isMember("text"))
-            {
-                std::string temp = options["text"].asString();
-                unsigned long index = 0;
-                while (true)
-                {
-                    index = temp.find('\n', index);
-                    if (index == std::string::npos)
-                    {
-                        break;
-                    }
-                    temp.replace(index, 1, "\\r\\n");
-                    index += 4;
-                }
-                mText = std::move(temp);
-            }
-            if (options.isMember("title"))
-            {
-                mTitle = options["title"].asString();
-            }
-            if (options.isMember("from"))
-            {
-                mFrom = options["from"].asString();
-            }
-            if (options.isMember("badge"))
-            {
-                mBadge = options["badge"].asInt();
-            }
-            if (options.isMember("payload"))
-            {
-                Json::FastWriter fast;
-                mPayload = fast.write(options["payload"]);
-            }
-            if (options.isMember("topic"))
-            {
-                mTopic = options["topic"].asString();
-            }
-            if (options.isMember("sound"))
-            {
-                mSound = options["sound"].asString();
-            }
-            mDeviceToken = (*pJson)["token"].asString();
-        }
-    }
-}
-
-std::string ApplePushModel::getPayload( const uuid_t &uuid) const
-{
-    Json::Value obj, aps, alert;
+    Json::Value payloadJson, payloadField, aps, alert;
     Json::FastWriter fast;
 
-    alert["body"] = mText;
-    alert["title"] = mTitle;
+    alert["body"] = pNotification.getText();
+    alert["title"] = pNotification.getTitle();
 
-    aps["category"] = "MESSAGE";
-    aps["badge"] = mBadge;
-    aps["sound"] = mSound;
+    if (pNotification.getApn() && pNotification.getApn()->category)
+    {
+        aps["category"] = pNotification.getApn()->category.value();
+    }
+
+    if (pNotification.getBadge())
+    {
+        aps["badge"] = pNotification.getBadge().value();
+    }
+
+    if (pNotification.getSound())
+    {
+        aps["sound"] = pNotification.getSound().value();
+    }
     aps["alert"] = alert;
 
-    obj["aps"] = aps;
-    obj["ejson"] = mPayload;
+    if (pNotification.getEJson())
+    {
+        payloadJson["ejson"] = fast.write(pNotification.getEJson().value());
+    }
 
-    std::string payload = fast.write(obj);
+    if (pNotification.getNotId())
+    {
+        aps["thread-id"] = pNotification.getNotId().value();
+    }
 
+    aps["mutable-content"] = 1;
 
+    payloadJson["messageFrom"] = pNotification.getFrom();
 
-    auto cleanedObj = obj;
-    cleanedObj["alert"] = "---removed from log---";
-    cleanedObj["ejson"] = "---removed from log---";
-    LOG(INFO) << uuid << "\tApple push data\t" << cleanedObj;
-    LOG(INFO) << uuid << "\tAPNS token:\t" << mDeviceToken;
+    payloadJson["aps"] = aps;
+
+    std::string payload = fast.write(payloadJson);
 
     return payload;
 }
 
-bool ApplePushModel::sendMessage()
+
+std::string& ApplePushModel::getAppleAuthToken()
 {
-    if (ForwardGatewayModel::ownsRegistrationId(mDeviceToken))
+    if (std::chrono::system_clock::now() >= mAuthToken.expires_in)
+    {
+        std::lock_guard lock(mTokenMutex);
+        if (std::chrono::system_clock::now() >= mAuthToken.expires_in)
+        {
+            try
+            {
+                const auto now = std::chrono::system_clock::now();
+                const auto tokenExpiry = std::chrono::system_clock::now() + std::chrono::hours(1);
+                mAuthToken.token = jwt::create().set_type("JWT")
+                                                .set_issued_at(now)
+                                                .set_expires_at(tokenExpiry)
+                                                .set_key_id(Settings::apnsKey())
+                                                .set_issuer(Settings::apnsTeamId())
+                                                .sign(jwt::algorithm::es256{"", Settings::apnsPrivateKey()});
+            }
+            catch (const std::exception& e)
+            {
+                std::cout << e.what() << std::endl;
+            }
+        }
+    }
+    return mAuthToken.token;
+}
+
+bool ApplePushModel::sendMessage(const GatewayNotification& pNotification)
+{
+    if (ForwardGatewayModel::ownsRegistrationId(pNotification.getToken().value()))
     {
         return false;
     }
 
-    const auto now = std::chrono::system_clock::now();
-    const auto expiry = now + std::chrono::hours(1);
+    auto const payload = getPayload(pNotification);
 
-    const auto token = jwt::create().set_type("JWT")
-                              .set_issued_at(now)
-                              .set_expires_at(expiry)
-                              .set_key_id(mKey)
-                              .set_issuer(mTeamId)
-                              .sign(jwt::algorithm::hs256{mPem});
+    auto token = getAppleAuthToken();
+    if (token.empty())
+    {
+        return false;
+    }
 
     uuid_t uuid;
+    char uuid_str[37];
     uuid_generate(uuid);
+    uuid_unparse(uuid, uuid_str);
 
-    const auto response = cpr::Post(cpr::Url{mApiUrl + mDeviceToken},
-                                    cpr::Header{
-                                        {"Content-Type", "application/json"},
-                                        {"Authorization", "Bearer " + token},
-                                        {"apns-id", std::string(reinterpret_cast<char*>(uuid))},
-                                        {"apns-expiration", "0"},
-                                        {"apns-priority", "10"},
-                                        {"apns-topic", mAppId},
-                                        {"apns-push-type", "alert"},
-                                        {"apns-collapse-id", mFrom}
-                                    },
-                                    cpr::HttpVersion{cpr::HttpVersionCode::VERSION_2_0_TLS},
-                                    cpr::Body{getPayload(uuid)});
+    const auto messageExpiry = std::chrono::duration_cast<std::chrono::seconds>(
+        (std::chrono::system_clock::now() + std::chrono::hours(1)).time_since_epoch());
 
-    if (response.status_code == 200)
+    const auto& deviceToken = pNotification.getToken().value();
+    const auto url = cpr::Url{mApiUrl + deviceToken};
+
+    cpr::Session session;
+    session.SetUrl(url);
+    session.SetHeader(cpr::Header{
+        {"Content-Type", "application/json"},
+        {"Authorization", "Bearer " + token},
+        {"apns-id", uuid_str},
+        {"apns-expiration", std::to_string(messageExpiry.count())},
+        {"apns-priority", "10"},
+        {"apns-topic", Settings::apnsAppId()},
+        {"apns-push-type", "alert"},
+    });
+    session.SetBody(payload);
+    session.SetHttpVersion(cpr::HttpVersion{cpr::HttpVersionCode::VERSION_2_0_PRIOR_KNOWLEDGE});
+    session.SetVerbose(Settings::getLogLevel() == trantor::Logger::LogLevel::kTrace ? true : false);
+
+    auto response = session.Post();
+
+    if (response.error.code == cpr::ErrorCode::OK)
     {
-        Json::Reader reader;
-        Json::Value responseObj;
-
-        reader.parse(response.text, responseObj);
-        if (responseObj.isMember("reason") && responseObj["reason"].asString() == "DeviceTokenNotForTopic")
+        if (response.status_code == 200)
         {
-            ForwardGatewayModel::claimRegistrationId(mDeviceToken);
-            LOG(INFO) << "MismatchSenderId mark if for forward gateway";
-            mReturnStatusCode = 406;
+            Json::Reader reader;
+            Json::Value responseObj;
+
+            reader.parse(response.text, responseObj);
+            if (responseObj.isMember("reason") && responseObj["reason"].asString() == "DeviceTokenNotForTopic")
+            {
+                ForwardGatewayModel::claimRegistrationId(pNotification.getToken().value());
+
+                LOG_INFO << "MismatchSenderId mark if for forward gateway";
+                return false;
+            }
+            return true;
+        }
+        else
+        {
+            LOG_ERROR << "failed to send notification, Error:" << response.text;
             return false;
         }
-        mReturnStatusCode = 200;
-        return true;
     }
-    LOG(ERROR) << "failed to send notification, Error:" << response.text;
-    mReturnStatusCode = 500;
+    else
+    {
+        LOG_ERROR << "failed to send notification, Error:" << response.error.message;
+        return false;;
+    }
+    LOG_ERROR << "failed to send notification, Error:" << response.text;
     return false;
-}
-
-void ApplePushModel::init()
-{
-    mAppId = Settings::apnsAppId();
-    mPem = Settings::apnsPrivateKey();
-    mTeamId = Settings::apnsTeamId();
-    mKey = Settings::apnsKey();
-    mPrivateKeyAlgo = Settings::apnsPrivateKeyAlgo();
-}
-
-int ApplePushModel::returnStatusCode() const
-{
-    return mReturnStatusCode;
 }
