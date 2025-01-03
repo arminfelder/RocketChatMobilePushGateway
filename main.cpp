@@ -34,7 +34,8 @@ int main(const int argc, char* argv[]) {
     drogon::app()
      .setLogLevel(Settings::getLogLevel())
      .addListener("0.0.0.0", 11000)
-     .setThreadNum(0);
+     .setThreadNum(0)
+     .setUploadPath("/tmp/upload");
 
     try {
         drogon::app().run();
